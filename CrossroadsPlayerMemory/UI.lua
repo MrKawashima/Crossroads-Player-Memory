@@ -4,9 +4,10 @@ local W, optionsWindow
 local function panel(parent, width, height, name)
     local obj = CreateFrame("Frame", name, parent, "BackdropTemplate")
     obj:SetSize(width, height)
-    obj:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8", edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize=18,
-        insets={left=4,right=4,top=4,bottom=4}})
+    obj:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8", edgeFile="Interface\\Buttons\\WHITE8X8", edgeSize=1,
+        insets={left=1,right=1,top=1,bottom=1}})
     obj:SetBackdropColor(0.035,0.05,0.065,0.98)
+    obj:SetBackdropBorderColor(0.18,0.22,0.25,1)
     return obj
 end
 local function label(parent, font, text, x, y, width, height)
@@ -17,9 +18,18 @@ local function label(parent, font, text, x, y, width, height)
     return s
 end
 local function button(parent, caption, x, y, width, height, callback)
-    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
     b:SetSize(width or 90, height or 24); b:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    b:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8"})
+    b:SetBackdropColor(0.07,0.09,0.11,1)
+    b:SetNormalFontObject("GameFontHighlightSmall")
+    b:SetHighlightFontObject("GameFontNormalSmall")
+    b:SetDisabledFontObject("GameFontDisableSmall")
     b:SetText(caption); b:SetScript("OnClick", callback)
+    b.LockHighlight=function(self) self.active=true; self:SetBackdropColor(0.18,0.21,0.22,1) end
+    b.UnlockHighlight=function(self) self.active=false; self:SetBackdropColor(0.07,0.09,0.11,1) end
+    b:SetScript("OnEnter",function(self) if not self.active then self:SetBackdropColor(0.12,0.15,0.17,1) end end)
+    b:SetScript("OnLeave",function(self) if not self.active then self:UnlockHighlight() end end)
     return b
 end
 local function entry(parent, x, y, width, height)
@@ -40,8 +50,24 @@ local function scrollArea(parent, x, y, width, height)
     return scroll, child
 end
 
+local function closeMenus()
+    if W then for _,menu in ipairs(W.menus or {}) do menu:Hide() end end
+end
+local function menu(parent, width, height, x, y)
+    local m=panel(parent,width,height)
+    m:SetPoint("TOPLEFT",parent,"TOPLEFT",x,y)
+    m:SetFrameLevel(parent:GetFrameLevel()+30); m:EnableMouse(true); m:Hide()
+    W.menus[#W.menus+1]=m
+    return m
+end
+local function toggleMenu(m)
+    local wasShown=m:IsShown(); closeMenus()
+    if not wasShown then m:Show() end
+end
+
 function CR:ConfirmDelete(text, callback)
     if not W then return end
+    closeMenus()
     if not W.confirm then
         local overlay = CreateFrame("Frame",nil,W,"BackdropTemplate")
         overlay:SetAllPoints(W); overlay:EnableMouse(true)
@@ -62,6 +88,8 @@ function CR:ConfirmDelete(text, callback)
 end
 
 function CR:SelectPerson(key)
+    closeMenus()
+    if W.eventDialog then W.eventDialog:Hide() end
     if W.selected ~= key then
         W.selected=key; W.notesFor=nil
         W.historyScroll:SetVerticalScroll(0)
@@ -69,10 +97,41 @@ function CR:SelectPerson(key)
     self:UIRefresh()
 end
 
+function CR:ShowHistoryEntry(key, item)
+    local person=self.db.people[key]
+    if not person then return end
+    closeMenus()
+    if not W.eventDialog then
+        local overlay=CreateFrame("Frame",nil,W,"BackdropTemplate")
+        overlay:SetAllPoints(W); overlay:EnableMouse(true); overlay:SetFrameStrata("FULLSCREEN_DIALOG")
+        overlay:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8"}); overlay:SetBackdropColor(0,0,0,0.8)
+        local box=panel(overlay,500,330); box:SetPoint("CENTER")
+        overlay.title=label(box,"GameFontNormalLarge","",20,-20,450,52)
+        overlay.meta=label(box,"GameFontDisableSmall","",20,-82,450,48)
+        overlay.detail=label(box,"GameFontHighlight","",20,-140,450,122)
+        overlay.close=button(box,"Close",360,-282,120,28,function() overlay:Hide() end)
+        overlay.remove=button(box,"Delete entry",20,-282,120,28,function()
+            local owner,entry,playerKey=overlay.person,overlay.entry,overlay.playerKey
+            overlay:Hide()
+            CR:ConfirmDelete("Delete this entry for " .. owner.name .. "?\n\n" .. (entry.title or entry.kind) .. "\n\nTotals, notes and tags are unchanged. Cannot be undone.",function()
+                if CR.db.people[playerKey]==owner then CR:DeleteHistoryEntry(playerKey,entry) end
+            end)
+        end)
+        W.eventDialog=overlay
+    end
+    local dialog=W.eventDialog
+    dialog.person=person; dialog.entry=item; dialog.playerKey=key
+    dialog.title:SetText(item.title or item.kind)
+    dialog.meta:SetText(person.name .. "\n" .. self:Date(item.when) .. "  ·  " .. (item.zone or "Unknown"))
+    dialog.detail:SetText((item.detail or "") .. "\n\n" .. (self.types[item.kind] or item.kind) .. " · " .. (item.confidence or "observed"))
+    dialog:Show()
+end
+
 function CR:BuildUI()
     if W then return end
     W=panel(UIParent,900,660,"CrossroadsPlayerMemoryMainWindow")
     self.window=W
+    W.menus={}
     W:SetPoint("CENTER"); W:SetFrameStrata("DIALOG"); W:EnableMouse(true)
     local function fitScreen()
         W:SetScale(math.min(1, math.max(0.1,(UIParent:GetWidth()-24)/900), math.max(0.1,(UIParent:GetHeight()-24)/660)))
@@ -81,22 +140,28 @@ function CR:BuildUI()
     W:SetMovable(true); W:SetClampedToScreen(true); W:RegisterForDrag("LeftButton")
     W:SetScript("OnDragStart",W.StartMoving); W:SetScript("OnDragStop",W.StopMovingOrSizing)
     W:Hide(); table.insert(UISpecialFrames,"CrossroadsPlayerMemoryMainWindow")
-    W:SetScript("OnHide",function() if W.confirm then W.confirm.action=nil; W.confirm:Hide() end end)
-    label(W,"GameFontNormalHuge","C R O S S R O A D S",20,-16,600,30)
-    label(W,"GameFontDisableSmall","Player Memory  |  " .. self.version,23,-47,500,18)
+    W:SetScript("OnHide",function()
+        closeMenus()
+        if W.eventDialog then W.eventDialog:Hide() end
+        if W.confirm then W.confirm.action=nil; W.confirm:Hide() end
+    end)
+    label(W,"GameFontNormalLarge","Crossroads",20,-20,600,25)
+    label(W,"GameFontDisableSmall","Player Memory",23,-47,500,18)
     button(W,"Options",744,-17,85,27,function() CR:ShowOptions() end)
     button(W,"X",843,-17,35,27,function() W:Hide() end)
 
     W.countLabel=label(W,"GameFontHighlightSmall","",20,-85,237,18)
-    label(W,"GameFontDisableSmall","Search players, guilds or notes",20,-111,235,16)
+    label(W,"GameFontDisableSmall","Search players",20,-111,235,16)
     W.search=entry(W,24,-133,225,24)
     W.search:SetScript("OnTextChanged",function(_,byUser)
         if byUser then W.listScroll:SetVerticalScroll(0); CR:UIRefresh() end
     end)
     W.filters={}; W.filter="All"; W.drafts={}
+    W.playerFilterButton=button(W,"All players  v",18,-169,230,25,function() toggleMenu(W.playerMenu) end)
+    W.playerMenu=menu(W,230,120,18,-198)
     for i,name in ipairs({"All","Friends","Rivals","Avoid"}) do
-        W.filters[name]=button(W,name,18+(i-1)*60,-169,58,24,function()
-            W.filter=name; W.listScroll:SetVerticalScroll(0); CR:UIRefresh()
+        W.filters[name]=button(W.playerMenu,name=="All" and "All players" or name,5,-5-(i-1)*27,220,25,function()
+            W.filter=name; closeMenus(); W.listScroll:SetVerticalScroll(0); CR:UIRefresh()
         end)
     end
     W.listScroll,W.listChild=scrollArea(W,12,-204,248,438)
@@ -105,7 +170,7 @@ function CR:BuildUI()
     local detail=panel(W,615,566); detail:SetPoint("TOPRIGHT",W,"TOPRIGHT",-12,-76)
     W.detail=detail
     W.playerTitle=label(detail,"GameFontNormalLarge","Select a player",16,-14,455,26)
-    W.deletePlayer=button(detail,"Delete player",480,-12,119,25,function()
+    W.deletePlayer=button(detail,"Delete player",465,-523,130,25,function()
         local key=W.selected; local person=key and CR.db.people[key]
         if not person then return end
         CR:ConfirmDelete("Delete " .. person.name .. "?\n\nRemoves their profile, notes, tags, totals and saved history. Cannot be undone.\n\nAutomatic recording pauses for this player until your next login or /reload. /crmemory add can add them again.",function()
@@ -114,70 +179,78 @@ function CR:BuildUI()
         end)
     end)
     W.playerInfo=label(detail,"GameFontHighlightSmall","",16,-45,580,31)
-    W.cards={}
-    local captions={"TIME TOGETHER","GROUP SESSIONS","DUNGEON / RAID VISITS"}
-    for i,caption in ipairs(captions) do
-        local card=panel(detail,188,70); card:SetPoint("TOPLEFT",detail,"TOPLEFT",16+(i-1)*197,-83)
-        card.caption=label(card,"GameFontNormalSmall",caption,10,-9,170,16)
-        card.value=label(card,"GameFontHighlightLarge","",10,-28,170,23)
-        card.hint=label(card,"GameFontDisableSmall","",10,-52,170,14)
-        W.cards[i]=card
-    end
-    W.playerStats=label(detail,"GameFontHighlightSmall","",18,-163,578,32)
+    W.timeTogether=label(detail,"GameFontHighlightLarge","",16,-84,580,27)
     W.tabs={}; W.tab="history"
-    for i,spec in ipairs({{"history","History"},{"notes","Notes & tags"}}) do
-        W.tabs[spec[1]]=button(detail,spec[2],16+(i-1)*143,-203,136,26,function()
+    for i,spec in ipairs({{"history","History"},{"notes","Profile"},{"stats","Statistics"}}) do
+        W.tabs[spec[1]]=button(detail,spec[2],16+(i-1)*124,-124,116,28,function()
+            closeMenus(); if W.eventDialog then W.eventDialog:Hide() end
             W.tab=spec[1]; CR:UIRefresh()
         end)
     end
-    W.tabHint=label(detail,"GameFontDisableSmall","Newest first",332,-210,262,18)
-    W.historyPane=CreateFrame("Frame",nil,detail); W.historyPane:SetSize(599,324)
-    W.historyPane:SetPoint("TOPLEFT",detail,"TOPLEFT",8,-234)
+    W.statsPane=CreateFrame("Frame",nil,detail); W.statsPane:SetSize(583,395)
+    W.statsPane:SetPoint("TOPLEFT",detail,"TOPLEFT",16,-166)
+    W.statValues={}
+    local statsList={{"groupSessions","Group sessions"},{"dungeonRuns","Dungeon / raid visits"},{"bossKills","Boss kills"},
+        {"groupQuests","Quests while grouped"},{"lootWins","Loot won"},{"tradeWindows","Trade attempts"},
+        {"killsOf","PvP kills"},{"deathsTo","PvP deaths"},{"whispersReceived","Whispers received"},{"whispersSent","Whispers sent"}}
+    for i,spec in ipairs(statsList) do
+        label(W.statsPane,"GameFontHighlight",spec[2],4,-10-(i-1)*32,400,24)
+        W.statValues[spec[1]]=label(W.statsPane,"GameFontNormal","",440,-10-(i-1)*32,100,24)
+    end
+    W.firstMet=label(W.statsPane,"GameFontDisableSmall","",4,-350,565,36)
+    W.historyPane=CreateFrame("Frame",nil,detail); W.historyPane:SetSize(599,395)
+    W.historyPane:SetPoint("TOPLEFT",detail,"TOPLEFT",8,-166)
     W.historyFilter="all"; W.historyFilters={}
     local filters={{"all","All"},{"group","Groups"},{"quest","Quests"},{"dungeon","Dungeons"},{"pvp","PvP"},
         {"loot","Loot"},{"trade","Trades"},{"social","Social"},{"sight","Encounters"},{"note","Personal"}}
+    W.historyFilterButton=button(W.historyPane,"All events  v",8,0,174,25,function() toggleMenu(W.historyMenu) end)
+    W.historyMenu=menu(W.historyPane,210,312,8,-29)
     for i,spec in ipairs(filters) do
-        W.historyFilters[spec[1]]=button(W.historyPane,spec[2],8+((i-1)%5)*116,-math.floor((i-1)/5)*26,110,23,function()
-            W.historyFilter=spec[1]; W.historyScroll:SetVerticalScroll(0); CR:UIRefresh()
+        W.historyFilters[spec[1]]=button(W.historyMenu,spec[2],5,-5-(i-1)*26,200,24,function()
+            W.historyFilter=spec[1]; closeMenus(); W.historyScroll:SetVerticalScroll(0); CR:UIRefresh()
         end)
     end
-    W.historySearch=entry(W.historyPane,12,-60,234,23)
+    W.historySearch=entry(W.historyPane,205,-1,373,24)
+    W.historySearchHint=label(W.historyPane,"GameFontDisableSmall","Search history",211,-6,320,18)
     W.historySearch:SetScript("OnTextChanged",function(_,byUser)
+        W.historySearchHint:SetShown(W.historySearch:GetText()=="")
         if byUser then W.historyScroll:SetVerticalScroll(0); CR:UIRefresh() end
     end)
-    W.showEdits=CreateFrame("CheckButton",nil,W.historyPane,"UICheckButtonTemplate")
-    W.showEdits:SetPoint("TOPLEFT",W.historyPane,"TOPLEFT",260,-55)
-    W.showEdits:SetChecked(false)
-    label(W.historyPane,"GameFontHighlightSmall","Show profile edits",293,-63,160,18)
+    W.showEdits=CreateFrame("CheckButton",nil,W.historyMenu,"UICheckButtonTemplate")
+    W.showEdits:SetPoint("TOPLEFT",W.historyMenu,"TOPLEFT",5,-273); W.showEdits:SetChecked(false)
+    label(W.historyMenu,"GameFontHighlightSmall","Include profile edits",36,-282,165,18)
     W.showEdits:SetScript("OnClick",function() W.historyScroll:SetVerticalScroll(0); CR:UIRefresh() end)
-    W.clearHistory=button(W.historyPane,"Clear history",466,-58,118,24,function()
+    W.clearHistory=button(detail,"Clear history",324,-523,130,25,function()
         local key=W.selected; local person=key and CR.db.people[key]
         if not person then return end
         CR:ConfirmDelete("Clear ALL history for " .. person.name .. "?\n\nThis includes entries hidden by filters. Notes, tags, ratings, totals and trade snapshots are kept.\n\nCannot be undone.",function()
             if CR.db.people[key] == person then CR:ClearHistory(key) end
         end)
     end)
-    W.historyCount=label(W.historyPane,"GameFontDisableSmall","",12,-89,565,16)
-    W.historyScroll,W.historyChild=scrollArea(W.historyPane,0,-111,592,209)
+    W.historyCount=label(W.historyPane,"GameFontDisableSmall","",12,-35,565,16)
+    W.historyScroll,W.historyChild=scrollArea(W.historyPane,0,-57,592,332)
     W.historyRows={}
     W.historyEmpty=label(W.historyChild,"GameFontHighlight","",12,-16,510,75)
 
-    W.notesPane=CreateFrame("Frame",nil,detail); W.notesPane:SetSize(583,324)
-    W.notesPane:SetPoint("TOPLEFT",detail,"TOPLEFT",16,-234)
-    label(W.notesPane,"GameFontNormalSmall","Rating",0,-4,65,20)
+    W.notesPane=CreateFrame("Frame",nil,detail); W.notesPane:SetSize(583,345)
+    W.notesPane:SetPoint("TOPLEFT",detail,"TOPLEFT",16,-166)
+    W.ratingButton=button(W.notesPane,"Unrated  v",0,0,146,26,function() toggleMenu(W.ratingMenu) end)
+    W.ratingMenu=menu(W.notesPane,278,38,0,-30)
     W.stars={}
-    for i=0,5 do W.stars[i]=button(W.notesPane,tostring(i),75+i*43,0,39,24,function()
-        if W.selected then CR:Rate(W.selected,i) end
+    for i=0,5 do W.stars[i]=button(W.ratingMenu,tostring(i),5+i*45,-5,42,27,function()
+        closeMenus(); if W.selected then CR:Rate(W.selected,i) end
     end) end
-    label(W.notesPane,"GameFontNormalSmall","Personal tags",0,-37,400,18)
+    W.editTags=button(W.notesPane,"Edit tags  v",433,0,146,26,function() toggleMenu(W.tagMenu) end)
+    W.tagsSummary=label(W.notesPane,"GameFontHighlight","",0,-45,570,44)
+    W.tagMenu=menu(W.notesPane,225,253,354,-30)
     W.tagButtons={}
     for i,tag in ipairs(CR.tags) do
-        W.tagButtons[tag]=button(W.notesPane,tag,((i-1)%3)*195,-60-math.floor((i-1)/3)*28,187,25,function()
+        W.tagButtons[tag]=button(W.tagMenu,tag,5,-5-(i-1)*27,215,25,function()
             if W.selected then CR:Tag(W.selected,tag) end
         end)
     end
-    label(W.notesPane,"GameFontNormalSmall","Private notes",0,-151,420,18)
-    local noteScroll,noteChild=scrollArea(W.notesPane,0,-175,583,101)
+    label(W.notesPane,"GameFontNormalSmall","Notes",0,-103,420,18)
+    local noteScroll,noteChild=scrollArea(W.notesPane,0,-130,583,160)
     W.notes=CreateFrame("EditBox",nil,noteChild)
     W.notes:SetPoint("TOPLEFT",noteChild,"TOPLEFT",4,-4); W.notes:SetWidth(531)
     W.notes:SetHeight(85)
@@ -188,8 +261,8 @@ function CR:BuildUI()
         if byUser and W.notesFor then W.drafts[W.notesFor]=self:GetText(); W.noteStatus:SetText("Unsaved changes") end
         noteChild:SetHeight(math.max(85,self:GetHeight()+8))
     end)
-    W.noteStatus=label(W.notesPane,"GameFontDisableSmall","Only visible to you",0,-291,430,18)
-    W.saveNote=button(W.notesPane,"Save note",458,-286,125,26,function()
+    W.noteStatus=label(W.notesPane,"GameFontDisableSmall","",0,-309,420,18)
+    W.saveNote=button(W.notesPane,"Save note",458,-301,125,26,function()
         if W.selected then
             CR:Note(W.selected,W.notes:GetText()); W.drafts[W.selected]=nil
             W.noteStatus:SetText("Note saved"); W.notes:ClearFocus()
@@ -202,7 +275,8 @@ function CR:UIRefresh()
     if not W or not W:IsShown() or not self.db then return end
     local list=self:List(W.search:GetText(),W.filter)
     local count=math.min(#list,300)
-    W.countLabel:SetText(count .. " of " .. #list .. " players")
+    W.countLabel:SetText(#list .. " players" .. (#list>300 and " (showing 300)" or ""))
+    W.playerFilterButton:SetText((W.filter=="All" and "All players" or W.filter) .. "  v")
     local selectedVisible=false
     for _,person in ipairs(list) do if person.key==W.selected then selectedVisible=true; break end end
     if not selectedVisible then
@@ -215,7 +289,8 @@ function CR:UIRefresh()
         if not row then
             row=CreateFrame("Button",nil,W.listChild); row:SetSize(208,45)
             row:SetPoint("TOPLEFT",W.listChild,"TOPLEFT",0,-(i-1)*47)
-            row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+            row:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
+            row:GetHighlightTexture():SetVertexColor(0.55,0.62,0.63,0.16)
             row.name=label(row,"GameFontHighlightSmall","",6,-5,197,18)
             row.meta=label(row,"GameFontDisableSmall","",6,-25,197,15)
             row:SetScript("OnClick",function(self) CR:SelectPerson(self.playerKey) end)
@@ -224,7 +299,7 @@ function CR:UIRefresh()
         row.playerKey=person.key
         local marker=person.tags.Avoid and "|cffff7766! |r" or person.tags.Rival and "|cffffb36b! |r" or person.tags.Friend and "|cff66dd88+ |r" or ""
         row.name:SetText(marker .. person.name)
-        row.meta:SetText(self:FormatDuration(person.stats.timeTogether) .. " together  |  " .. (person.rating or 0) .. "/5")
+        row.meta:SetText(self:FormatDuration(person.stats.timeTogether) .. " together")
         if person.key==W.selected then row:LockHighlight() else row:UnlockHighlight() end
         row:Show()
     end
@@ -236,35 +311,40 @@ function CR:UIRefresh()
     for _,b in pairs(W.tagButtons) do b:SetEnabled(person~=nil) end
     for key,b in pairs(W.tabs) do if key==W.tab then b:LockHighlight() else b:UnlockHighlight() end end
     W.historyPane:SetShown(W.tab=="history"); W.notesPane:SetShown(W.tab=="notes")
-    W.tabHint:SetText(W.tab=="history" and "Newest first  |  click entry for details" or "Private notes and personal assessments")
+    W.statsPane:SetShown(W.tab=="stats")
+    W.deletePlayer:SetShown(W.tab=="notes"); W.clearHistory:SetShown(W.tab=="notes")
+    W.ratingButton:SetEnabled(person~=nil); W.editTags:SetEnabled(person~=nil)
+    W.historyFilterButton:SetText((self.types[W.historyFilter] or "All events") .. "  v")
     if not person then
         W.playerTitle:SetText("No player selected"); W.playerInfo:SetText("Select a player, or adjust your search and filters.")
-        W.playerStats:SetText("")
-        for _,card in ipairs(W.cards) do card.value:SetText("—"); card.hint:SetText("") end
-        W.notesFor=nil; W.notes:SetText(""); W.noteStatus:SetText("Only visible to you")
+        W.timeTogether:SetText(""); W.firstMet:SetText(""); W.tagsSummary:SetText(""); W.ratingButton:SetText("Unrated  v")
+        for _,value in pairs(W.statValues) do value:SetText("—") end
+        W.notesFor=nil; W.notes:SetText(""); W.noteStatus:SetText("")
         W.historyCount:SetText("No entries"); W.clearHistory:Disable()
         for _,row in ipairs(W.historyRows) do row:Hide() end
-        W.historyChild:SetHeight(193); W.historyEmpty:SetText("Your history will appear here."); W.historyEmpty:Show()
+        W.historyChild:SetHeight(316); W.historyEmpty:SetText("Your history will appear here."); W.historyEmpty:Show()
         return
     end
     W.playerTitle:SetText(person.name .. (person.partial and " (partial name)" or ""))
     W.playerInfo:SetText((person.level and ("Level "..person.level.."  ") or "") .. (person.race or "") .. " " .. (person.class or "") .. (person.guild and ("  <"..person.guild..">") or "")
-        .. "\nFirst met " .. self:Date(person.firstSeen) .. "  |  " .. (person.firstZone or "Unknown"))
+)
     local stats=person.stats or {}
-    W.cards[1].value:SetText(self:FormatDuration(stats.timeTogether)); W.cards[1].hint:SetText("Approximate grouped time")
-    W.cards[2].value:SetText(tostring(stats.groupSessions or 0)); W.cards[2].hint:SetText("Recorded party / raid sessions")
-    W.cards[3].value:SetText(tostring(stats.dungeonRuns or 0)); W.cards[3].hint:SetText((stats.bossKills or 0) .. " boss kills recorded")
-    W.playerStats:SetText("Quests: " .. (stats.groupQuests or 0) .. "   |   Loot wins: " .. (stats.lootWins or 0) .. "   |   Trades: " .. (stats.tradeWindows or 0)
-        .. "\nPvP: " .. (stats.killsOf or 0) .. " kills / " .. (stats.deathsTo or 0) .. " deaths   |   Whispers: " .. (stats.whispersReceived or 0) .. " in / " .. (stats.whispersSent or 0) .. " out")
+    W.timeTogether:SetText(self:FormatDuration(stats.timeTogether) .. " together")
+    W.firstMet:SetText("First met " .. self:Date(person.firstSeen) .. " in " .. (person.firstZone or "Unknown") .. "\nTime together is approximate grouped time.")
+    for field,value in pairs(W.statValues) do value:SetText(tostring(stats[field] or 0)) end
+    W.ratingButton:SetText((person.rating==0 and "Unrated" or ("Rating: " .. person.rating .. " / 5")) .. "  v")
+    local selectedTags={}
+    for _,tag in ipairs(self.tags) do if person.tags[tag] then selectedTags[#selectedTags+1]=tag end end
+    W.tagsSummary:SetText(#selectedTags>0 and table.concat(selectedTags,"  ·  ") or "No tags")
     for i,b in pairs(W.stars) do if person.rating==i then b:LockHighlight() else b:UnlockHighlight() end end
     for tag,b in pairs(W.tagButtons) do if person.tags[tag] then b:LockHighlight() else b:UnlockHighlight() end end
     if W.notesFor~=person.key then
         W.notesFor=person.key; W.notes:SetText(W.drafts[person.key] or person.notes or "")
-        W.noteStatus:SetText(W.drafts[person.key] and "Unsaved changes" or "Only visible to you")
+        W.noteStatus:SetText(W.drafts[person.key] and "Unsaved changes" or "")
     end
     for kind,b in pairs(W.historyFilters) do if kind==W.historyFilter then b:LockHighlight() else b:UnlockHighlight() end end
     local items=self:HistoryItems(person,W.historyFilter,W.historySearch:GetText(),W.showEdits:GetChecked())
-    W.historyCount:SetText(#items .. " shown / " .. #person.history .. " saved  |  Search titles, places and details")
+    W.historyCount:SetText(#items .. " entries  ·  newest first")
     W.clearHistory:SetEnabled(#person.history>0)
     W.historyEmpty:SetShown(#items==0)
     W.historyEmpty:SetText(#person.history==0 and "No saved history for this player yet." or "No matching entries. Try All, clear the search, or select Personal to see profile edits.")
@@ -275,44 +355,36 @@ function CR:UIRefresh()
             row=CreateFrame("Frame",nil,W.historyChild); row:SetWidth(552); row:EnableMouse(true)
             row:SetScript("OnMouseUp",function(_,mouseButton)
                 if mouseButton == "LeftButton" then
-                    if W.expandedEntry==row.entry then W.expandedEntry=nil else W.expandedEntry=row.entry end
-                    CR:UIRefresh()
+                    CR:ShowHistoryEntry(row.playerKey,row.entry)
                 end
             end)
             row.day=label(row,"GameFontNormalSmall","",4,0,530,18)
-            row.title=label(row,"GameFontHighlight","",4,0,469,34)
-            row.meta=label(row,"GameFontDisableSmall","",4,0,469,17)
-            row.detail=label(row,"GameFontHighlightSmall","",4,0,469,34)
-            row.remove=button(row,"Delete",480,0,65,23,function()
-                local key,entry,owner=row.playerKey,row.entry,row.person
-                CR:ConfirmDelete("Delete this entry for " .. owner.name .. "?\n\n" .. (entry.title or entry.kind) .. "\n\nOnly this timeline entry is removed. Totals, notes, labels and trade snapshots are unchanged. Cannot be undone.",function()
-                    if CR.db.people[key]==owner then CR:DeleteHistoryEntry(key,entry) end
-                end)
-            end)
+            row.title=label(row,"GameFontHighlight","",60,0,330,20)
+            row.time=label(row,"GameFontDisableSmall","",4,0,50,20)
+            row.place=label(row,"GameFontDisableSmall","",400,0,145,20)
+            row.line=row:CreateTexture(nil,"BACKGROUND")
+            row.line:SetColorTexture(0.16,0.19,0.21,0.55); row.line:SetSize(540,1)
+            row:SetScript("OnEnter",function() row.title:SetTextColor(1,0.82,0.45) end)
+            row:SetScript("OnLeave",function() row.title:SetTextColor(1,1,1) end)
             W.historyRows[i]=row
         end
         row.playerKey=person.key; row.person=person; row.entry=item
         local day=date("%d %b %Y",item.when); local newDay=day~=lastDay
-        local top=newDay and 24 or 4; lastDay=day
+        local top=newDay and 30 or 8; lastDay=day
         row:ClearAllPoints(); row:SetPoint("TOPLEFT",W.historyChild,"TOPLEFT",0,-offset)
         row.day:SetShown(newDay); row.day:SetText(day)
-        row.title:ClearAllPoints(); row.title:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top)
-        row.title:SetText((W.expandedEntry==item and "- " or "+ ") .. (CR.types[item.kind] or item.kind) .. "  ·  " .. (item.title or item.kind))
-        local titleHeight=math.max(16,math.min(34,row.title:GetStringHeight()))
-        row.meta:ClearAllPoints(); row.meta:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top-titleHeight-2)
-        row.meta:SetText(date("%H:%M",item.when) .. "  |  " .. (item.zone or "Unknown") .. "  |  " .. (item.confidence or "observed"))
-        row.detail:ClearAllPoints(); row.detail:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top-titleHeight-22)
-        row.detail:SetText(item.detail or "")
-        local expanded=W.expandedEntry==item
-        row.detail:SetShown(expanded)
-        local detailHeight=expanded and math.max(34,row.detail:GetStringHeight()) or 0
-        row.detail:SetHeight(math.max(34,detailHeight))
-        row.remove:ClearAllPoints(); row.remove:SetPoint("TOPLEFT",row,"TOPLEFT",480,-top)
-        local height=top+titleHeight+26+detailHeight; row:SetHeight(height); offset=offset+height+5; row:Show()
+        row.title:ClearAllPoints(); row.title:SetPoint("TOPLEFT",row,"TOPLEFT",60,-top)
+        row.title:SetText(item.title or item.kind)
+        row.time:ClearAllPoints(); row.time:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top)
+        row.time:SetText(date("%H:%M",item.when))
+        row.place:ClearAllPoints(); row.place:SetPoint("TOPLEFT",row,"TOPLEFT",400,-top)
+        row.place:SetText(item.zone or "Unknown")
+        row.line:ClearAllPoints(); row.line:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top-25)
+        local height=top+28; row:SetHeight(height); offset=offset+height; row:Show()
     end
     for i=#items+1,#W.historyRows do W.historyRows[i]:Hide() end
-    W.historyChild:SetHeight(math.max(193,offset))
-    W.historyScroll:SetVerticalScroll(math.min(W.historyScroll:GetVerticalScroll(),math.max(0,offset-193)))
+    W.historyChild:SetHeight(math.max(316,offset))
+    W.historyScroll:SetVerticalScroll(math.min(W.historyScroll:GetVerticalScroll(),math.max(0,offset-316)))
 end
 
 function CR:OpenUI(key)

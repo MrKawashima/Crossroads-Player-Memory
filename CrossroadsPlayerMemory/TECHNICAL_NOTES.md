@@ -41,3 +41,9 @@ User evidence: an in-game screenshot of 0.2.1 shows the journal opening, player 
 Additional Lua 5.1 tests cover readable durations; unchanged rating/tag deduplication; category and text filters; default hiding of profile edits; cancel and confirm; stable deletion after rows reorder or the selected player changes; independent totals; expand/collapse; unsaved drafts; empty filtered selections; one-to-one legacy entry-ID migration; complete profile deletion and cleanup of run/GUID/trade references; suppression of automatic recreation during the session; and explicit re-adding.
 
 In-game checks still required: low-resolution layout/scaling; scroll and long-text behavior; modal interaction and cancellation; delete one filtered entry while new events arrive; delete a grouped player and confirm they remain absent until reload; preserve existing notes/history across upgrade; verify hourly duration formatting with real play time. Deleting a row or history intentionally does not reconstruct totals from the capped history.
+
+## 0.2.3 simplified journal
+
+offline Lua 5.1 tests pass, including navigation, menus, event details, deletion and cancellation, changes arriving during confirmation, legacy entry IDs and saved-note drafts. A layout preview was rendered from mocked frame geometry. **This new interface has not been verified in the real game client.** User screenshots show the previous interface running, but do not verify all trackers or persistence. Experimental Alpha targeting WoW Forever 1.60.1 / Interface 16001.
+
+Additional assertions cover three-tab visibility, mutually exclusive menus, rating selection, event details without row expansion, and destructive actions hidden from History. In-game font wrapping, scrolling, dropdown interaction and low-resolution scaling still require client validation.

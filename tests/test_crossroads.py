@@ -12,15 +12,25 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
 CR = {}; frames = {}; SlashCmdList = {}; UISpecialFrames = {}; clock = 2000
 local noop = function() end
-function CreateFrame(kind, name)
- local f = {scripts={}, shown=false, text='', width=140, height=140, checked=false}
+function CreateFrame(kind, name, parent)
+ local f = {scripts={}, shown=true, text='', width=140, height=140, checked=false, kind=kind, parent=parent, points={}}
  setmetatable(f,{__index=function(_, k)
   if k=='SetScript' or k=='HookScript' then return function(self, ev, fn) self.scripts[ev]=fn end end
   if k=='RegisterEvent' then return function(self,ev) if ev=='PARTY_KILL' then error('unsupported mock event') end end end
-  if k=='CreateTexture' or k=='CreateFontString' then return function() return CreateFrame() end end
+  if k=='CreateTexture' or k=='CreateFontString' then return function(self,_,layer,font) local child=CreateFrame(k=='CreateTexture' and 'Texture' or 'FontString',nil,self); child.font=font; return child end end
+  if k=='GetHighlightTexture' then return function() return {SetVertexColor=function() end} end end
   if k=='SetText' then return function(self,s) self.text=s end end
   if k=='GetText' then return function(self) return self.text end end
   if k=='SetSize' then return function(self,w,h) self.width=w; self.height=h end end
+  if k=='SetWidth' then return function(self,w) self.width=w end end
+  if k=='SetHeight' then return function(self,h) self.height=h end end
+  if k=='SetPoint' then return function(self,...) self.points[#self.points+1]={...} end end
+  if k=='ClearAllPoints' then return function(self) self.points={} end end
+  if k=='SetAllPoints' then return function(self,p) self.allPoints=p end end
+  if k=='SetBackdrop' then return function(self,v) self.backdrop=v end end
+  if k=='SetBackdropColor' then return function(self,...) self.color={...} end end
+  if k=='SetBackdropBorderColor' then return function(self,...) self.borderColor={...} end end
+  if k=='SetNormalFontObject' then return function(self,font) self.font=font end end
   if k=='GetWidth' then return function(self) return self.width end end
   if k=='GetHeight' then return function(self) return self.height end end
   if k=='GetStringHeight' then return function(self) return 16 * math.max(1,math.ceil(#self.text/70)) end end
@@ -161,10 +171,10 @@ CR:OpenUI(person.key)
 local w=CR.window
 w.historyFilter='loot'; CR:UIRefresh()
 local target=w.historyRows[1].entry
-w.historyRows[1].remove.scripts.OnClick()
+w.historyRows[1].scripts.OnMouseUp(nil,'LeftButton'); w.eventDialog.remove.scripts.OnClick()
 assert(#person.history==3)
 w.confirm.cancel.scripts.OnClick(); assert(#person.history==3)
-w.historyRows[1].remove.scripts.OnClick()
+w.historyRows[1].scripts.OnMouseUp(nil,'LeftButton'); w.eventDialog.remove.scripts.OnClick()
 CR:Record(person.name,'loot','Another drop','Different record','observed')
 CR:SelectPerson('rival ash')
 w.confirm.accept.scripts.OnClick()
@@ -173,11 +183,12 @@ for _,e in ipairs(person.history) do assert(e~=target) end
 for _,e in ipairs(CR.db.activity) do assert(e.id~=target.id) end
 assert(person.stats.timeTogether==30)
 
--- Expand/collapse, draft retention and empty search state.
+-- Read details without changing row geometry, draft retention and empty search state.
 CR:SelectPerson(person.key); w.historyFilter='all'; CR:UIRefresh()
 local row=w.historyRows[1]
-row.scripts.OnMouseUp(nil,'LeftButton'); assert(w.expandedEntry==row.entry)
-row.scripts.OnMouseUp(nil,'LeftButton'); assert(w.expandedEntry==nil)
+local rowHeight=row.height
+row.scripts.OnMouseUp(nil,'LeftButton'); assert(w.eventDialog.entry==row.entry and w.eventDialog:IsShown())
+w.eventDialog.close.scripts.OnClick(); assert(not w.eventDialog:IsShown() and row.height==rowHeight)
 w.notes:SetText('Unsaved draft'); w.notes.scripts.OnTextChanged(w.notes,true)
 CR:SelectPerson('rival ash'); CR:SelectPerson(person.key)
 assert(w.notes:GetText()=='Unsaved draft' and person.notes=='Helpful')
@@ -216,4 +227,23 @@ clock=2100; CR:TrackGroup(); CR:GroupTick(); assert(CR.db.people[key]==nil)
 CR:Slash('add Alice Oak'); assert(CR.db.people[key] and next(CR.db.people[key].stats)==nil)
 CR:ClearHistory(key); assert(#CR.db.people[key].history==0)
 ''')
-print('PASS: 0.2.2 duration formatting, edit noise reduction, category/text filters, cancel/confirm deletion, stale selection safety, independent totals, expansion, note drafts, empty selection, legacy ID migration, complete player deletion and prevention of immediate recreation.')
+print('PASS: duration formatting, edit noise reduction, filters, deletion/cancellation, stale selection safety, independent totals, event details, drafts, legacy migration and profile cleanup.')
+
+lua.execute(r'''
+local w=CR.window
+CR:OpenUI('alice oak')
+w.tabs.history.scripts.OnClick()
+assert(w.historyPane.shown and not w.notesPane.shown and not w.statsPane.shown)
+assert(not w.deletePlayer.shown and not w.clearHistory.shown)
+for _,menu in ipairs(w.menus) do assert(not menu.shown) end
+w.historyFilterButton.scripts.OnClick(); assert(w.historyMenu.shown)
+w.historyFilters.social.scripts.OnClick(); assert(not w.historyMenu.shown and w.historyFilter=='social')
+w.tabs.notes.scripts.OnClick()
+assert(w.notesPane.shown and w.deletePlayer.shown and w.clearHistory.shown and not w.historyPane.shown)
+w.editTags.scripts.OnClick(); assert(w.tagMenu.shown)
+w.ratingButton.scripts.OnClick(); assert(w.ratingMenu.shown and not w.tagMenu.shown)
+w.stars[4].scripts.OnClick(); assert(CR:Find('Alice Oak').rating==4 and not w.ratingMenu.shown)
+w.tabs.stats.scripts.OnClick(); assert(w.statsPane.shown and not w.notesPane.shown and not w.deletePlayer.shown)
+w.tabs.history.scripts.OnClick()
+''')
+print('PASS: simplified navigation, mutually exclusive menus, rating selection and hiding destructive actions from history.')

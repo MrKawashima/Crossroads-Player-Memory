@@ -3,7 +3,7 @@
 
 **Remember the people. Relive the adventures.**
 
-A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.2-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
+A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.3-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
 
 > **Experimental Alpha — this new build has not been tested in the real WoW Forever client.** Source review and offline Lua 5.1 simulations passed. These checks do not prove client compatibility, event availability, UI layout, or persistence. Treat records as incomplete observations, not authoritative evidence about other players.
 
@@ -21,7 +21,7 @@ A local player-history journal for **World of Warcraft: Forever**, by **MrKawash
 
 ## Installation
 
-1. Download **Crossroads-Player-Memory-Forever-0.2.2-alpha.zip** from Releases.
+1. Download **Crossroads-Player-Memory-Forever-0.2.3-alpha.zip** from Releases.
 2. Extract the **CrossroadsPlayerMemory** folder into your Forever client's **Interface/AddOns** directory, usually `World of Warcraft/_forever_/Interface/AddOns`.
 3. Check that `Interface/AddOns/CrossroadsPlayerMemory/CrossroadsPlayerMemory.toc` exists.
 4. Enable **Crossroads: Player Memory (alpha)** in the AddOns list.
@@ -35,11 +35,13 @@ The public release uses `CrossroadsPlayerMemoryDB` in `CrossroadsPlayerMemory.lu
 
 ## Journal layout and deletion
 
-The profile header separates **Time Together**, **Group Sessions**, and **Dungeon / Raid Visits**. Time is shown as hours and minutes, rather than an undifferentiated minute count.
+The header shows time together in hours and minutes. **History**, **Profile** and **Statistics** have separate tabs.
 
-**History** provides category filters, text search, date headings and entries you can click to expand. Profile edits are hidden by default to keep adventures visible; select **Personal** or enable **Show profile edits** to include them. **Notes & tags** has its own tab. Unsaved note drafts are kept while switching players in the current UI session; click **Save note** to persist them.
+**History** shows date headings and single-line rows with time, event and location. Click an event for details and the **Delete entry** action. A category menu and text search narrow the list. Profile edits are hidden by default; select **Personal** or enable **Show profile edits** in the category menu to include them.
 
-- **Delete** beside an entry removes that entry after confirmation.
+**Profile** contains rating and tag menus, private notes, **Clear history** and **Delete player**. Unsaved note drafts survive switching players during the UI session; click **Save note** to persist them. **Statistics** contains the remaining counters.
+
+- **Delete entry** in the event details removes that entry after confirmation.
 - **Clear history** removes all timeline entries for the selected player, including filtered-out entries.
 - Both actions leave aggregate statistics, current notes/labels and trade snapshots unchanged: the bounded timeline cannot reconstruct lifetime totals.
 - **Delete player** removes the full profile, notes, labels, totals, trade snapshots, activity references and references in saved instance rosters. Other players and shared runs are retained.
@@ -75,7 +77,7 @@ Quest records describe **your** actions while grouped; they do not prove a teamm
 
 ## Known limitations
 
-- No real-client testing. API payloads, restricted/secret data, and missing events may cause incomplete records. Unavailable event registrations are reported in chat rather than aborting startup.
+- This new interface has not been tested in the real client. API payloads, restricted/secret data, and missing events may cause incomplete records. Unavailable event registrations are reported in chat rather than aborting startup.
 - Death recap fields and kill credit remain experimental. Pets, hidden identities and unavailable recap data can prevent attribution. Duplicate death events are suppressed until revival.
 - Names are account-wide keys. Ambiguous first names are not merged; identical full names across rulesets and renamed characters are not fully reconciled.
 - Group time is approximate. A reload or logout interrupts an instance visit.

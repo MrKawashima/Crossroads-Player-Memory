@@ -1,3 +1,22 @@
+# Crossroads: Player Memory 0.2.3 Alpha
+
+A simpler journal with more room for the people and events you want to remember.
+
+- A calmer interface with compact navigation and fewer visible controls.
+- Time together is prominent beneath the player name, formatted in hours and minutes.
+- History, Profile and Statistics have separate tabs.
+- Timeline entries use consistent rows: time, event and location, grouped by date.
+- Click an event to read its details or delete it with confirmation.
+- One category menu replaces the grid of history filters; text search remains available.
+- Rating and tag menus keep profile editing compact; selected tags remain visible.
+- Clear history and Delete player are available on the Profile tab, with confirmation.
+
+Existing profiles, notes and statistics are preserved. Removing history does not recalculate lifetime totals. Deleted players are not automatically recreated until the next login/reload, unless explicitly added again.
+
+Validation: offline Lua 5.1 tests pass, including navigation, menus, event details, deletion and cancellation, changes arriving during confirmation, legacy entry IDs and saved-note drafts. A layout preview was rendered from mocked frame geometry. **This new interface has not been verified in the real game client.** User screenshots show the previous interface running, but do not verify all trackers or persistence. Experimental Alpha targeting WoW Forever 1.60.1 / Interface 16001.
+
+---
+
 # Crossroads: Player Memory 0.2.2 Alpha
 
 ## A clearer player overview
