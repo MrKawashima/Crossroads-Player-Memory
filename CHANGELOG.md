@@ -1,3 +1,26 @@
+# Crossroads: Player Memory 0.2.4 Alpha
+
+## Group trips in your timeline
+
+- New group activity is collected into a single trip per player, with time together, party participants, locations and activity counts.
+- Open a trip for the recorded quest, dungeon, loot, trade and other activity details.
+- Whispers with a current party member are counted in the trip instead of creating separate rows. Message contents are never saved.
+- Joining, leaving and rejoining the same ongoing party updates each player's own accumulated time. A trip ends when no tracked companions remain. Reload/login starts a separate trip; offline time is not counted.
+- Search and category filters also find activities inside trips. Removing a trip removes its stored activity details for that player, while lifetime statistics remain unchanged.
+- Older history stays intact; the addon does not guess missing historical party boundaries.
+
+## Defaults
+
+New installations enable group time, quests, instances, PvP, loot, trade attempts, whisper counts, rival alerts, tooltips and the minimap button. Target-based encounter recording and party-chat counts are disabled. Existing saved preferences are preserved.
+
+## Validation and limits
+
+Offline Lua 5.1 regressions pass, including session aggregation, whisper counts, roster changes, per-player duration, search, deletion during an active trip, reload separation and saved preference preservation. Trip details retain the latest 50 non-whisper activities, with counts retained when older details are omitted. History retains up to 100 entries per player.
+
+**This Alpha has not been verified in the real WoW Forever client.** User screenshots confirm that earlier UI builds opened in game; they do not validate every tracker or persistence. Targets Forever 1.60.1 / Interface 16001. Quest entries describe your actions, dungeon events do not prove a clear, and trade attempts do not prove completion.
+
+---
+
 # Crossroads: Player Memory 0.2.3 Alpha
 
 A simpler journal with more room for the people and events you want to remember.

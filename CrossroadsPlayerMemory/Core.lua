@@ -1,9 +1,9 @@
 local addonName, CR = ...
 _G.CrossroadsPlayerMemoryLocal = CR
-CR.version = "0.2.3-alpha"
+CR.version = "0.2.4-alpha"
 CR.settingsDefaults = {
     groups = true, quests = true, instances = true, pvp = true,
-    loot = true, trades = true, social = true, sight = true,
+    loot = true, trades = true, social = true, sight = false,
     alerts = true, tooltips = true, chatCounts = false, minimapIcon = true,
 }
 CR.tags = {"Friend", "Helpful", "Great Tank", "Great Healer", "Great DPS", "Rival", "Ninja Looter", "Avoid", "Kill on Sight"}
@@ -166,6 +166,19 @@ function CR:Record(name, kind, title, detail, confidence, silent)
     if not self.db then return nil end
     local p = self:Person(name)
     if not p then return nil end
+    local trip = self:ActiveTrip(p.key)
+    if trip and kind ~= "note" and kind ~= "sight" and kind ~= "group" then
+        trip.counts[kind] = (trip.counts[kind] or 0) + 1
+        trip.events[#trip.events+1] = {when=self:Now(),kind=kind,title=title or kind,
+            detail=(self:SafeString(detail) or ""):sub(1,240),zone=self:Zone()}
+        while #trip.events > 50 do table.remove(trip.events,1); trip.omitted=(trip.omitted or 0)+1 end
+        trip.zones[self:Zone()] = true
+        p.lastSeen,p.lastZone=self:Now(),self:Zone()
+        if not silent then self:UIRefresh() end
+        return p
+    end
+    if not trip and self.groupSession and self.groupSession.rows[p.key] and self.group[p.key]
+        and self.db.options.groups and kind ~= "note" and kind ~= "sight" and kind ~= "group" then return p end
     self.db.nextEntryID = (self.db.nextEntryID or 0) + 1
     local entry = {
         id=self.db.nextEntryID,
@@ -180,6 +193,45 @@ function CR:Record(name, kind, title, detail, confidence, silent)
     while #self.db.activity > 1500 do table.remove(self.db.activity) end
     if not silent and self.UIRefresh then self:UIRefresh() end
     return p
+end
+
+-- Session entries are real history objects, so deletion remains identity-safe.
+function CR:ActiveTrip(key)
+    local session=self.groupSession
+    if not session or not self.db.options.groups or not self.group[key] then return nil end
+    local row=session.rows[key]
+    local person=self.db.people[key]
+    if not row or not person then return nil end
+    for _,entry in ipairs(person.history) do if entry==row then return row end end
+    return nil -- Deleted or evicted summaries are never recreated during this trip.
+end
+
+function CR:TripText(item)
+    if not item.sessionID then return item.detail or "" end
+    local members,zones={},{}
+    for _,name in pairs(item.members or {}) do members[#members+1]=name end
+    for zone in pairs(item.zones or {}) do zones[#zones+1]=zone end
+    table.sort(members); table.sort(zones)
+    local lines={"Time with this player: "..self:FormatDuration(item.duration),
+        "Status: "..(item.status or "ongoing"),"Party participants: You, "..table.concat(members,", "),
+        "Places: "..table.concat(zones,", "),
+        "Whispers: "..(item.whispersIn or 0).." received / "..(item.whispersOut or 0).." sent"}
+    for _,kind in ipairs({"quest","dungeon","loot","trade","pvp","social"}) do
+        if (item.counts[kind] or 0)>0 then lines[#lines+1]=self.types[kind].." events: "..item.counts[kind] end
+    end
+    lines[#lines+1]="\nRecorded activities (your observations):"
+    for _,event in ipairs(item.events) do
+        lines[#lines+1]=date("%H:%M",event.when).."  "..event.title.." — "..event.zone
+        if event.detail~="" then lines[#lines+1]=event.detail end
+    end
+    if #item.events==0 then lines[#lines+1]="No other activities recorded." end
+    if item.omitted then lines[#lines+1]=item.omitted.." older activity details omitted; counts retained." end
+    return table.concat(lines,"\n")
+end
+
+function CR:HistoryTitle(item)
+    if not item.sessionID then return item.title or item.kind end
+    return "Group trip · "..self:FormatDuration(item.duration)..(item.status=="ongoing" and " · ongoing" or "")
 end
 
 function CR:Stat(name, field, delta)
@@ -265,6 +317,12 @@ function CR:DeletePerson(key)
     for memberKey, name in pairs(self.group) do
         if self:Normalize(name) == key then self.group[memberKey] = nil end
     end
+    if self.groupSession then self.groupSession.rows[key]=nil; self.groupSession.members[key]=nil end
+    for _,person in pairs(self.db.people) do
+        for _,entry in ipairs(person.history or {}) do
+            if entry.members then entry.members[key]=nil end
+        end
+    end
     if self.trade and self:Normalize(self.trade.name) == key then self.trade = nil end
     if self:Normalize(self.tradePendingName) == key then self.tradePendingName = nil end
     if self:Normalize(self.duelOpponent) == key then self.duelOpponent = nil end
@@ -283,9 +341,9 @@ function CR:HistoryItems(person, filter, search, showEdits)
     local out = {}
     search = (search or ""):lower()
     for _, item in ipairs(person.history or {}) do
-        local kindOK = (filter == "all" or item.kind == filter)
+        local kindOK = (filter == "all" or item.kind == filter or (item.sessionID and ((item.counts[filter] or 0)>0 or (filter=="social" and ((item.whispersIn or 0)+(item.whispersOut or 0)>0)))))
         local visible = showEdits or filter == "note" or item.kind ~= "note"
-        local text = ((item.title or "") .. " " .. (item.detail or "") .. " " .. (item.zone or "")):lower()
+        local text = ((item.title or "") .. " " .. self:TripText(item) .. " " .. (item.zone or "")):lower()
         if kindOK and visible and (search == "" or text:find(search, 1, true)) then out[#out+1] = item end
     end
     return out
@@ -352,6 +410,12 @@ function CR:Init()
     self.db.options = type(self.db.options) == "table" and self.db.options or {}
     self.db.summary = type(self.db.summary) == "table" and self.db.summary or {}
     self:UpgradeHistoryIDs()
+    self.groupSession=nil
+    for _,person in pairs(self.db.people) do
+        for _,entry in ipairs(person.history or {}) do
+            if entry.sessionID and entry.status=="ongoing" then entry.status="interrupted by reload/logout" end
+        end
+    end
     self.forgotten = {}
     for k, v in pairs(self.settingsDefaults) do
         if self.db.options[k] == nil then self.db.options[k] = v end

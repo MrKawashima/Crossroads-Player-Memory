@@ -147,6 +147,7 @@ CR:Slash('minimap reset'); assert(CR.minimapButton:IsShown() and CR.db.options.m
 print('PASS: Lua 5.1 parse/load; login with unsupported event; namespaces; secret guards; names; groups; quests; instances; loot ID and dedupe; trade attribution; social privacy; death dedupe and conservative attribution; kills; limits; UI and minimap simulation.')
 
 lua.execute(r'''
+CR:FinishGroupSession('test boundary')
 assert(CR:FormatDuration(0)=='0 min')
 assert(CR:FormatDuration(30)=='< 1 min')
 assert(CR:FormatDuration(9300)=='2 h 35 min')
@@ -247,3 +248,50 @@ w.tabs.stats.scripts.OnClick(); assert(w.statsPane.shown and not w.notesPane.sho
 w.tabs.history.scripts.OnClick()
 ''')
 print('PASS: simplified navigation, mutually exclusive menus, rating selection and hiding destructive actions from history.')
+
+
+lua.execute(r'''
+-- Fresh persisted options match the requested screenshot; saved choices survive upgrades.
+CrossroadsPlayerMemoryDB={}; CR.run=nil; CR:Init()
+assert(CR.db.options.sight==false and CR.db.options.chatCounts==false)
+for _,k in ipairs({'groups','quests','instances','pvp','loot','trades','social','alerts','tooltips','minimapIcon'}) do assert(CR.db.options[k]==true) end
+local alice=CR:Find('Alice Oak'); local trip=alice.history[1]
+assert(trip.sessionID and #alice.history==1)
+clock=clock+30; CR:GroupTick()
+for i=1,20 do CR:SocialEvent('CHAT_MSG_WHISPER','Alice Oak') end
+CR:SocialEvent('CHAT_MSG_WHISPER_INFORM','Alice Oak')
+CR:QuestTurnedIn(42)
+assert(#alice.history==1 and trip.whispersIn==20 and trip.whispersOut==1 and trip.counts.quest==1)
+assert(trip.duration==30 and #trip.events==1)
+assert(#CR:HistoryItems(alice,'social','',false)==1)
+assert(#CR:HistoryItems(alice,'quest','A Test Quest',false)==1)
+local outsider=CR:Person('Other Person'); CR:SocialEvent('CHAT_MSG_WHISPER',outsider.name)
+assert(not outsider.history[1].sessionID and trip.whispersIn==20)
+units.party2={'Bob','Pine','Player-4'}; CR:TrackGroup()
+local bob=CR:Find('Bob Pine'); local bobTrip=bob.history[1]
+assert(bobTrip.sessionID==trip.sessionID and trip.members['bob pine']=='Bob Pine')
+clock=clock+60; CR:GroupTick(); assert(trip.duration==90 and bobTrip.duration==60)
+units.party1=nil; CR:TrackGroup(); clock=clock+30; CR:GroupTick()
+assert(trip.duration==90 and bobTrip.duration==90 and trip.status=='left group')
+units.party1={'Alice','Oak','Player-2'}; CR:TrackGroup()
+clock=clock+30; CR:GroupTick(); assert(trip.duration==120 and bobTrip.duration==120 and #alice.history==1)
+CR:OpenUI(alice.key); CR:ShowHistoryEntry(alice.key,trip)
+assert(CR.window.eventDialog.detail.text:find('20 received / 1 sent',1,true))
+assert(CR.window.eventDialog.detail.text:find('A Test Quest',1,true))
+for i=1,60 do CR:QuestAccepted(i) end
+assert(#trip.events==50 and trip.omitted==11 and trip.counts.quest==61)
+assert(CR:DeleteHistoryEntry(alice.key,trip)); CR:QuestTurnedIn(42); CR:SocialEvent('CHAT_MSG_WHISPER',alice.name)
+assert(#alice.history==0) -- No replacement or stray rows after deleting an active trip.
+CR:DeletePerson(bob.key); assert(trip.members['bob pine']==nil or CR.db.people['alice oak'].history[1]==nil)
+units.party1=nil; units.party2=nil; CR:TrackGroup(); assert(CR.groupSession==nil)
+units.party1={'Alice','Oak','Player-2'}; CR:TrackGroup()
+local nextTrip=alice.history[1]; assert(nextTrip.sessionID~=trip.sessionID)
+CR.db.options.sight=true; CR.db.options.loot=false
+CR:Init(); assert(CR.db.options.sight==true and CR.db.options.loot==false)
+assert(nextTrip.status=='interrupted by reload/logout')
+assert(CR:Find('Alice Oak').history[1].sessionID~=nextTrip.sessionID)
+CR.db.options.groups=false; CR:TrackGroup(); assert(CR.groupSession==nil)
+local count=#CR:Find('Alice Oak').history; CR:QuestTurnedIn(42)
+assert(#CR:Find('Alice Oak').history==count+1)
+''')
+print('PASS: trip aggregation, whisper privacy/counts, roster changes, per-player duration, search/categories, bounded details, active-trip deletion, reload separation and default/preserved settings.')

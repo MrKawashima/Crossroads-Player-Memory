@@ -105,12 +105,13 @@ function CR:ShowHistoryEntry(key, item)
         local overlay=CreateFrame("Frame",nil,W,"BackdropTemplate")
         overlay:SetAllPoints(W); overlay:EnableMouse(true); overlay:SetFrameStrata("FULLSCREEN_DIALOG")
         overlay:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8"}); overlay:SetBackdropColor(0,0,0,0.8)
-        local box=panel(overlay,500,330); box:SetPoint("CENTER")
+        local box=panel(overlay,540,440); box:SetPoint("CENTER")
         overlay.title=label(box,"GameFontNormalLarge","",20,-20,450,52)
         overlay.meta=label(box,"GameFontDisableSmall","",20,-82,450,48)
-        overlay.detail=label(box,"GameFontHighlight","",20,-140,450,122)
-        overlay.close=button(box,"Close",360,-282,120,28,function() overlay:Hide() end)
-        overlay.remove=button(box,"Delete entry",20,-282,120,28,function()
+        overlay.scroll,overlay.child=scrollArea(box,20,-134,500,248)
+        overlay.detail=label(overlay.child,"GameFontHighlight","",0,0,455,220)
+        overlay.close=button(box,"Close",400,-398,120,28,function() overlay:Hide() end)
+        overlay.remove=button(box,"Delete entry",20,-398,120,28,function()
             local owner,entry,playerKey=overlay.person,overlay.entry,overlay.playerKey
             overlay:Hide()
             CR:ConfirmDelete("Delete this entry for " .. owner.name .. "?\n\n" .. (entry.title or entry.kind) .. "\n\nTotals, notes and tags are unchanged. Cannot be undone.",function()
@@ -121,9 +122,12 @@ function CR:ShowHistoryEntry(key, item)
     end
     local dialog=W.eventDialog
     dialog.person=person; dialog.entry=item; dialog.playerKey=key
-    dialog.title:SetText(item.title or item.kind)
+    dialog.title:SetText(self:HistoryTitle(item))
     dialog.meta:SetText(person.name .. "\n" .. self:Date(item.when) .. "  ·  " .. (item.zone or "Unknown"))
-    dialog.detail:SetText((item.detail or "") .. "\n\n" .. (self.types[item.kind] or item.kind) .. " · " .. (item.confidence or "observed"))
+    dialog.detail:SetText(self:TripText(item) .. "\n\n" .. (self.types[item.kind] or item.kind) .. " · " .. (item.confidence or "observed"))
+    dialog.detail:SetHeight(0)
+    local height=math.max(220,dialog.detail:GetStringHeight()+12)
+    dialog.detail:SetHeight(height); dialog.child:SetHeight(height); dialog.scroll:SetVerticalScroll(0)
     dialog:Show()
 end
 
@@ -360,6 +364,7 @@ function CR:UIRefresh()
             end)
             row.day=label(row,"GameFontNormalSmall","",4,0,530,18)
             row.title=label(row,"GameFontHighlight","",60,0,330,20)
+            row.summary=label(row,"GameFontDisableSmall","",60,0,480,36)
             row.time=label(row,"GameFontDisableSmall","",4,0,50,20)
             row.place=label(row,"GameFontDisableSmall","",400,0,145,20)
             row.line=row:CreateTexture(nil,"BACKGROUND")
@@ -374,13 +379,29 @@ function CR:UIRefresh()
         row:ClearAllPoints(); row:SetPoint("TOPLEFT",W.historyChild,"TOPLEFT",0,-offset)
         row.day:SetShown(newDay); row.day:SetText(day)
         row.title:ClearAllPoints(); row.title:SetPoint("TOPLEFT",row,"TOPLEFT",60,-top)
-        row.title:SetText(item.title or item.kind)
+        row.title:SetText(self:HistoryTitle(item))
         row.time:ClearAllPoints(); row.time:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top)
         row.time:SetText(date("%H:%M",item.when))
         row.place:ClearAllPoints(); row.place:SetPoint("TOPLEFT",row,"TOPLEFT",400,-top)
         row.place:SetText(item.zone or "Unknown")
-        row.line:ClearAllPoints(); row.line:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top-25)
-        local height=top+28; row:SetHeight(height); offset=offset+height; row:Show()
+        local extra=item.sessionID and 42 or 0
+        row.summary:SetShown(item.sessionID~=nil)
+        if item.sessionID then
+            local names,activities={},{}
+            for _,name in pairs(item.members) do names[#names+1]=name end
+            table.sort(names)
+            for _,kind in ipairs({"quest","dungeon","loot","trade","pvp","social"}) do
+                if (item.counts[kind] or 0)>0 then activities[#activities+1]=(self.types[kind] or kind)..": "..item.counts[kind] end
+            end
+            local whispers=(item.whispersIn or 0)+(item.whispersOut or 0)
+            if whispers>0 then activities[#activities+1]="Whispers: "..whispers end
+            row.summary:ClearAllPoints(); row.summary:SetPoint("TOPLEFT",row,"TOPLEFT",60,-top-21)
+            local roster=table.concat(names,", ")
+            if #names>3 then roster=table.concat({names[1],names[2],names[3]},", ").." +"..(#names-3) end
+            row.summary:SetText(roster.."\n"..(#activities>0 and table.concat(activities," · ") or "No other activities recorded"))
+        end
+        row.line:ClearAllPoints(); row.line:SetPoint("TOPLEFT",row,"TOPLEFT",4,-top-25-extra)
+        local height=top+28+extra; row:SetHeight(height); offset=offset+height; row:Show()
     end
     for i=#items+1,#W.historyRows do W.historyRows[i]:Hide() end
     W.historyChild:SetHeight(math.max(316,offset))

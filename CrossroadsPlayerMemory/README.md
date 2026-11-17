@@ -3,7 +3,7 @@
 
 **Remember the people. Relive the adventures.**
 
-A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.3-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
+A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.4-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
 
 > **Experimental Alpha — this new build has not been tested in the real WoW Forever client.** Source review and offline Lua 5.1 simulations passed. These checks do not prove client compatibility, event availability, UI layout, or persistence. Treat records as incomplete observations, not authoritative evidence about other players.
 
@@ -21,7 +21,7 @@ A local player-history journal for **World of Warcraft: Forever**, by **MrKawash
 
 ## Installation
 
-1. Download **Crossroads-Player-Memory-Forever-0.2.3-alpha.zip** from Releases.
+1. Download **Crossroads-Player-Memory-Forever-0.2.4-alpha.zip** from Releases.
 2. Extract the **CrossroadsPlayerMemory** folder into your Forever client's **Interface/AddOns** directory, usually `World of Warcraft/_forever_/Interface/AddOns`.
 3. Check that `Interface/AddOns/CrossroadsPlayerMemory/CrossroadsPlayerMemory.toc` exists.
 4. Enable **Crossroads: Player Memory (alpha)** in the AddOns list.
@@ -37,6 +37,8 @@ The public release uses `CrossroadsPlayerMemoryDB` in `CrossroadsPlayerMemory.lu
 
 The header shows time together in hours and minutes. **History**, **Profile** and **Statistics** have separate tabs.
 
+New group activity is collected into **group trips**, with party participants, time with the selected player, places and activity counts. Click a trip for details. Whispers with party members appear only as counts. A trip ends when no tracked companions remain; reload/login starts a new trip. Legacy entries remain unchanged. Each trip keeps the latest 50 activity details, with counts retained.
+
 **History** shows date headings and single-line rows with time, event and location. Click an event for details and the **Delete entry** action. A category menu and text search narrow the list. Profile edits are hidden by default; select **Personal** or enable **Show profile edits** in the category menu to include them.
 
 **Profile** contains rating and tag menus, private notes, **Clear history** and **Delete player**. Unsaved note drafts survive switching players during the UI session; click **Save note** to persist them. **Statistics** contains the remaining counters.
@@ -48,6 +50,8 @@ The header shows time together in hours and minutes. **History**, **Profile** an
 - These actions cannot be undone. A deleted player is not automatically recreated until the next login/reload. `/crmemory add First Surname` adds them again sooner. This is not a permanent ignore list.
 
 Upgrade from the public 0.2.1 build by replacing the **CrossroadsPlayerMemory** addon folder. Keep its SavedVariables file; existing profiles are upgraded automatically.
+
+New-install defaults enable all listed tracking options except **Record when you target players** and **Count party chat messages**. Saved preferences are preserved.
 
 ## Commands
 

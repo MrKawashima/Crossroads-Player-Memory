@@ -23,26 +23,51 @@ function CR:GroupMembers()
     return allMembers()
 end
 
+function CR:FinishGroupSession(reason)
+    if not self.groupSession then return end
+    for _,row in pairs(self.groupSession.rows) do
+        if row.status=="ongoing" then row.status=reason or "ended"; row.ended=self:Now() end
+    end
+    self.groupSession=nil
+end
+
 function CR:TrackGroup()
     if not self.db then return end
-    local current = allMembers()
-    local now = self:Now()
-    for key, name in pairs(current) do
-        if self.db.options.groups and not self.group[key] then
-            local p = self:Person(name)
-            if p then
-                if (p.lastGrouped or 0) < now - 180 then
-                    self:Stat(name, "groupSessions", 1)
-                    self:Record(name, "group", "Grouped together", "Started in " .. self:Zone(), "observed", true)
-                end
-                p.lastGrouped = now
+    local current=allMembers()
+    current[self.meKey]=nil
+    local now=self:Now()
+    if not self.db.options.groups or not next(current) then
+        self:FinishGroupSession(self.db.options.groups and "ended" or "tracking disabled")
+    else
+        if not self.groupSession then
+            self.db.nextSessionID=(self.db.nextSessionID or 0)+1
+            self.groupSession={id=self.db.nextSessionID,rows={},members={}}
+        end
+        local session=self.groupSession
+        for key,name in pairs(current) do session.members[key]=name end
+        for key,row in pairs(session.rows) do
+            if not current[key] and row.status=="ongoing" then row.status="left group"; row.ended=now end
+        end
+        for key,name in pairs(current) do
+            local p=self:Person(name)
+            if p and not session.rows[key] then
+                self:Stat(name,"groupSessions",1)
+                self:Record(name,"group","Group trip","", "observed",true)
+                local row=p.history[1]
+                row.sessionID=session.id; row.duration=0; row.status="ongoing"
+                row.members={}; row.zones={[self:Zone()]=true}; row.events={}; row.counts={}
+                session.rows[key]=row
+            elseif session.rows[key] then
+                session.rows[key].status="ongoing"; session.rows[key].ended=nil
             end
+            if p then p.lastGrouped=now end
+        end
+        for _,row in pairs(session.rows) do
+            for key,name in pairs(session.members) do row.members[key]=name end
         end
     end
-    self.group = current
-    if self.run then
-        for key, name in pairs(current) do self.run.members[key] = name end
-    end
+    self.group=current
+    if self.run then for key,name in pairs(current) do self.run.members[key]=name end end
     self:UIRefresh()
 end
 
@@ -55,6 +80,8 @@ function CR:GroupTick()
         for _, name in pairs(self.group) do
             local p = self:Stat(name, "timeTogether", delta)
             if p then p.lastGrouped = now end
+            local trip=p and self:ActiveTrip(p.key)
+            if trip then trip.duration=trip.duration+delta; trip.zones[self:Zone()]=true; trip.lastTick=now end
         end
     end
     self:UIRefresh()
@@ -267,6 +294,14 @@ function CR:SocialEvent(event, name)
     if event == "CHAT_MSG_WHISPER" or event == "CHAT_MSG_WHISPER_INFORM" then
         local incoming = event == "CHAT_MSG_WHISPER"
         self:Stat(name, incoming and "whispersReceived" or "whispersSent", 1)
+        local trip=self:ActiveTrip(p.key)
+        if trip then
+            local field=incoming and "whispersIn" or "whispersOut"
+            trip[field]=(trip[field] or 0)+1
+            self:UIRefresh()
+            return
+        end
+        if self.groupSession and self.groupSession.rows[p.key] and self.group[p.key] and self.db.options.groups then return end
         local field = incoming and "lastWhisperIn" or "lastWhisperOut"
         if self:Now() - (p[field] or 0) > 900 then
             self:Record(name, "social", incoming and "Received whisper" or "Sent whisper",
@@ -456,6 +491,7 @@ local function onEvent(_, event, ...)
     elseif event == "PLAYER_LOGOUT" then
         CR:GroupTick()
         if CR.run then CR:FinishRun(true) end
+        CR:FinishGroupSession("interrupted by reload/logout")
     elseif event == "GROUP_ROSTER_UPDATE" then
         CR:GroupTick()
         CR:TrackGroup()

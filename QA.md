@@ -47,3 +47,9 @@ In-game checks still required: low-resolution layout/scaling; scroll and long-te
 offline Lua 5.1 tests pass, including navigation, menus, event details, deletion and cancellation, changes arriving during confirmation, legacy entry IDs and saved-note drafts. A layout preview was rendered from mocked frame geometry. **This new interface has not been verified in the real game client.** User screenshots show the previous interface running, but do not verify all trackers or persistence. Experimental Alpha targeting WoW Forever 1.60.1 / Interface 16001.
 
 Additional assertions cover three-tab visibility, mutually exclusive menus, rating selection, event details without row expansion, and destructive actions hidden from History. In-game font wrapping, scrolling, dropdown interaction and low-resolution scaling still require client validation.
+
+## 0.2.4 group trips
+
+Offline Lua 5.1 regressions pass, including session aggregation, whisper counts, roster changes, per-player duration, search, deletion during an active trip, reload separation and saved preference preservation. Trip details retain the latest 50 non-whisper activities, with counts retained when older details are omitted. History retains up to 100 entries per player.
+
+**This Alpha has not been verified in the real WoW Forever client.** User screenshots confirm that earlier UI builds opened in game; they do not validate every tracker or persistence. Targets Forever 1.60.1 / Interface 16001. Quest entries describe your actions, dungeon events do not prove a clear, and trade attempts do not prove completion.
