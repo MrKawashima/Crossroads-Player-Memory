@@ -1,5 +1,7 @@
 # Crossroads: Player Memory
 
+<img src="assets/project-icon.png" alt="Crossroads journal and signpost emblem" width="240" />
+
 **Remember the people. Relive the adventures.**
 
 A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.1-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
