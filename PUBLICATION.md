@@ -2,7 +2,7 @@
 
 - Title: Crossroads: Player Memory
 - Owner: MrKawashima
-- Version/tag: 0.2.1-alpha / v0.2.1-alpha
+- Version/tag: 0.2.2-alpha / v0.2.2-alpha
 - GitHub: https://github.com/MrKawashima/Crossroads-Player-Memory
 - GitHub release type: prerelease
 - CurseForge file type: Alpha

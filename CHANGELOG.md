@@ -1,3 +1,34 @@
+# Crossroads: Player Memory 0.2.2 Alpha
+
+## A clearer player overview
+
+- Dedicated Time Together, Group Sessions and Dungeon / Raid Visits cards.
+- Time is formatted as hours and minutes; the player list also shows time together.
+- Separate History and Notes & Tags tabs, with a larger, opaque history area.
+- Category filters, text search, date headings and compact expandable entries.
+- Profile-edit events are hidden by default; select Personal or Show profile edits to display them.
+- Repeating an unchanged rating or tag no longer creates a redundant entry.
+- Unsaved note drafts survive switching between profiles during the current UI session.
+- Window scales down to fit the available UI area.
+
+## Manage your journal
+
+- Delete individual history entries with confirmation.
+- Clear all history for one player with confirmation, including entries hidden by filters.
+- Delete a whole player profile with confirmation, including notes, labels, totals, trade snapshots and references in saved instance rosters.
+- Deleting a timeline entry or clearing history leaves aggregate statistics, current notes, labels and trade snapshots unchanged. The dialogs explain this distinction.
+- A deleted player is not automatically recreated during the current session. Automatic recording resumes after login/reload; `/crmemory add First Surname` can add them again sooner. This is deletion, not a permanent ignore list.
+
+Existing profiles and notes are preserved on upgrade. Stable internal entry IDs are added automatically for reliable deletion, including legacy history.
+
+## Validation
+
+Offline Lua 5.1 regression tests pass, including cancellation, filtered-entry deletion, events arriving while confirmation is open, legacy migration, duration formatting, profile deletion, draft retention and prevention of immediate recreation.
+
+The user supplied an in-game screenshot showing the previous 0.2.1 UI and player/edit records. **The new 0.2.2 interface and changes have not yet been tested in the real client.** This remains an Alpha for WoW Forever 1.60.1 / Interface 16001; broader tracking and persistence are not fully verified.
+
+---
+
 # Crossroads: Player Memory — 0.2.1-alpha
 
 Initial public Alpha for World of Warcraft: Forever (Interface 16001).

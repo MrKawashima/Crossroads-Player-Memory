@@ -2,7 +2,7 @@
 ## Title: Crossroads: Player Memory |cffcba96a(alpha)|r
 ## Notes: A personal memory of every adventurer you meet in WoW Forever.
 ## Author: MrKawashima
-## Version: 0.2.1-alpha
+## Version: 0.2.2-alpha
 ## SavedVariables: CrossroadsPlayerMemoryDB
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 
@@ -10,3 +10,4 @@ Core.lua
 Events.lua
 UI.lua
 Minimap.lua
+

@@ -23,6 +23,13 @@ function CreateFrame(kind, name)
   if k=='SetSize' then return function(self,w,h) self.width=w; self.height=h end end
   if k=='GetWidth' then return function(self) return self.width end end
   if k=='GetHeight' then return function(self) return self.height end end
+  if k=='GetStringHeight' then return function(self) return 16 * math.max(1,math.ceil(#self.text/70)) end end
+  if k=='GetVerticalScroll' then return function(self) return self.scroll or 0 end end
+  if k=='SetVerticalScroll' then return function(self,v) self.scroll=v end end
+  if k=='SetShown' then return function(self,v) self.shown=v end end
+  if k=='SetEnabled' then return function(self,v) self.enabled=v end end
+  if k=='Enable' then return function(self) self.enabled=true end end
+  if k=='Disable' then return function(self) self.enabled=false end end
   if k=='GetFrameLevel' then return function() return 1 end end
   if k=='GetEffectiveScale' then return function() return 1 end end
   if k=='GetCenter' then return function() return 100,100 end end
@@ -31,7 +38,8 @@ function CreateFrame(kind, name)
   if k=='IsShown' then return function(self) return self.shown end end
   if k=='GetChecked' then return function(self) return self.checked end end
   if k=='SetChecked' then return function(self,v) self.checked=v end end
-  return noop
+  if k:match('^%u') then return noop end
+  return nil
  end})
  frames[#frames+1]=f; if name then _G[name]=f end; return f
 end
@@ -127,3 +135,85 @@ CR:Slash('minimap hide'); assert(not CR.minimapButton:IsShown())
 CR:Slash('minimap reset'); assert(CR.minimapButton:IsShown() and CR.db.options.minimapAngle==225)
 ''')
 print('PASS: Lua 5.1 parse/load; login with unsupported event; namespaces; secret guards; names; groups; quests; instances; loot ID and dedupe; trade attribution; social privacy; death dedupe and conservative attribution; kills; limits; UI and minimap simulation.')
+
+lua.execute(r'''
+assert(CR:FormatDuration(0)=='0 min')
+assert(CR:FormatDuration(30)=='< 1 min')
+assert(CR:FormatDuration(9300)=='2 h 35 min')
+assert(CR:FormatDuration(90000)=='25 h 0 min')
+local person=CR:Find('Alice Oak')
+local before=#person.history
+CR:Rate(person.name,person.rating); CR:Tag(person.name,'Friend',true)
+assert(#person.history==before)
+CR:ClearHistory(person.key)
+assert(#person.history==0 and person.stats.timeTogether==30 and person.notes=='Helpful')
+CR:Record(person.name,'note','Marked: Friend','Personal edit','manual')
+CR:Record(person.name,'group','Grouped together','Test Valley','observed')
+CR:Record(person.name,'loot','Loot won: sword','A rare sword','observed')
+assert(#CR:HistoryItems(person,'all','',false)==2)
+assert(#CR:HistoryItems(person,'note','',false)==1)
+assert(#CR:HistoryItems(person,'all','sword',true)==1)
+assert(#CR:HistoryItems(person,'group','sword',false)==0)
+assert(#CR:HistoryItems(person,'all','',true)==3)
+
+-- Filtered deletion uses entry identity, not the current row index or selected profile.
+CR:OpenUI(person.key)
+local w=CR.window
+w.historyFilter='loot'; CR:UIRefresh()
+local target=w.historyRows[1].entry
+w.historyRows[1].remove.scripts.OnClick()
+assert(#person.history==3)
+w.confirm.cancel.scripts.OnClick(); assert(#person.history==3)
+w.historyRows[1].remove.scripts.OnClick()
+CR:Record(person.name,'loot','Another drop','Different record','observed')
+CR:SelectPerson('rival ash')
+w.confirm.accept.scripts.OnClick()
+assert(#person.history==3)
+for _,e in ipairs(person.history) do assert(e~=target) end
+for _,e in ipairs(CR.db.activity) do assert(e.id~=target.id) end
+assert(person.stats.timeTogether==30)
+
+-- Expand/collapse, draft retention and empty search state.
+CR:SelectPerson(person.key); w.historyFilter='all'; CR:UIRefresh()
+local row=w.historyRows[1]
+row.scripts.OnMouseUp(nil,'LeftButton'); assert(w.expandedEntry==row.entry)
+row.scripts.OnMouseUp(nil,'LeftButton'); assert(w.expandedEntry==nil)
+w.notes:SetText('Unsaved draft'); w.notes.scripts.OnTextChanged(w.notes,true)
+CR:SelectPerson('rival ash'); CR:SelectPerson(person.key)
+assert(w.notes:GetText()=='Unsaved draft' and person.notes=='Helpful')
+w.saveNote.scripts.OnClick(); assert(person.notes=='Unsaved draft' and w.drafts[person.key]==nil)
+w.search:SetText('not a matching player'); CR:UIRefresh()
+assert(w.selected==nil and w.deletePlayer.enabled==false and w.saveNote.enabled==false)
+w.search:SetText(''); CR:OpenUI(person.key)
+
+-- Migration links identical legacy events one-to-one and is idempotent.
+local legacy=CR:Person('Legacy Person')
+legacy.history={{when=123,kind='note',title='Same'},{when=123,kind='note',title='Same'}}
+CR.db.activity={{key=legacy.key,when=123,kind='note',title='Same'},{key=legacy.key,when=123,kind='note',title='Same'}}
+CR:UpgradeHistoryIDs()
+local id1,id2=legacy.history[1].id,legacy.history[2].id
+assert(id1~=id2 and CR.db.activity[1].id==id1 and CR.db.activity[2].id==id2)
+CR:UpgradeHistoryIDs(); assert(legacy.history[1].id==id1)
+assert(CR:DeleteHistoryEntry(legacy.key,legacy.history[2]))
+assert(#legacy.history==1 and #CR.db.activity==1 and CR.db.activity[1].id==id1)
+
+-- Delete player removes references but does not delete other players or shared runs.
+local key=person.key
+CR.db.runs={{members={[key]=person.name,['rival ash']='Rival Ash'}}}
+CR.run={members={[key]=person.name}}
+CR.guidCache['Player-2']=key
+CR.group[key]=person.name
+CR.trade={name=person.name}; CR.tradePendingName=person.name; CR.duelOpponent=person.name
+CR:OpenUI(key); w.deletePlayer.scripts.OnClick()
+w.confirm.cancel.scripts.OnClick(); assert(CR.db.people[key])
+w.deletePlayer.scripts.OnClick(); w.confirm.accept.scripts.OnClick()
+assert(CR.db.people[key]==nil and CR:Find('Rival Ash')~=nil)
+assert(CR.guidCache['Player-2']==nil and CR.group[key]==nil)
+assert(CR.db.runs[1].members[key]==nil and CR.db.runs[1].members['rival ash']=='Rival Ash')
+assert(CR.run.members[key]==nil and CR.trade==nil and CR.tradePendingName==nil and CR.duelOpponent==nil)
+assert(CR:Person('Alice Oak')==nil)
+clock=2100; CR:TrackGroup(); CR:GroupTick(); assert(CR.db.people[key]==nil)
+CR:Slash('add Alice Oak'); assert(CR.db.people[key] and next(CR.db.people[key].stats)==nil)
+CR:ClearHistory(key); assert(#CR.db.people[key].history==0)
+''')
+print('PASS: 0.2.2 duration formatting, edit noise reduction, category/text filters, cancel/confirm deletion, stale selection safety, independent totals, expansion, note drafts, empty selection, legacy ID migration, complete player deletion and prevention of immediate recreation.')

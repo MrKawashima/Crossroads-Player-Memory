@@ -33,3 +33,11 @@ Mainline documents support the API review but are not proof of identical behavio
 ## Open design limitations
 
 Account-wide name-keyed records can conflate characters sharing a full name across rulesets. Profiles have no total count cap. First-name identity recovery and trade partner availability remain conservative. The Alpha does not migrate private prototype storage automatically.
+
+## 0.2.2 UI and deletion
+
+User evidence: an in-game screenshot of 0.2.1 shows the journal opening, player profiles and manual rating/tag entries. It does not validate all trackers. The redesigned 0.2.2 UI has only been exercised with mocks, not rendered in the game.
+
+Additional Lua 5.1 tests cover readable durations; unchanged rating/tag deduplication; category and text filters; default hiding of profile edits; cancel and confirm; stable deletion after rows reorder or the selected player changes; independent totals; expand/collapse; unsaved drafts; empty filtered selections; one-to-one legacy entry-ID migration; complete profile deletion and cleanup of run/GUID/trade references; suppression of automatic recreation during the session; and explicit re-adding.
+
+In-game checks still required: low-resolution layout/scaling; scroll and long-text behavior; modal interaction and cancellation; delete one filtered entry while new events arrive; delete a grouped player and confirm they remain absent until reload; preserve existing notes/history across upgrade; verify hourly duration formatting with real play time. Deleting a row or history intentionally does not reconstruct totals from the capped history.

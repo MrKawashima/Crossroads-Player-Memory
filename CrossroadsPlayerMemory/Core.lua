@@ -1,6 +1,6 @@
 local addonName, CR = ...
 _G.CrossroadsPlayerMemoryLocal = CR
-CR.version = "0.2.1-alpha"
+CR.version = "0.2.2-alpha"
 CR.settingsDefaults = {
     groups = true, quests = true, instances = true, pvp = true,
     loot = true, trades = true, social = true, sight = true,
@@ -114,7 +114,7 @@ end
 function CR:Person(name)
     if not self.db then return nil end
     local key, display = self:Resolve(name)
-    if not key then return nil end
+    if not key or (self.forgotten and self.forgotten[key]) then return nil end
     local p = self.db.people[key]
     if not p then
         p = {
@@ -166,7 +166,9 @@ function CR:Record(name, kind, title, detail, confidence, silent)
     if not self.db then return nil end
     local p = self:Person(name)
     if not p then return nil end
+    self.db.nextEntryID = (self.db.nextEntryID or 0) + 1
     local entry = {
+        id=self.db.nextEntryID,
         when=self:Now(), kind=kind, title=title or kind,
         detail=(self:SafeString(detail) or ""):sub(1, 240),
         zone=self:Zone(), confidence=confidence or "observed", by=self.me or "Unknown",
@@ -174,7 +176,7 @@ function CR:Record(name, kind, title, detail, confidence, silent)
     table.insert(p.history, 1, entry)
     while #p.history > 100 do table.remove(p.history) end
     p.lastSeen, p.lastZone = entry.when, entry.zone
-    table.insert(self.db.activity, 1, {key=p.key, name=p.name, when=entry.when, kind=kind, title=title})
+    table.insert(self.db.activity, 1, {id=entry.id, key=p.key, name=p.name, when=entry.when, kind=kind, title=title})
     while #self.db.activity > 1500 do table.remove(self.db.activity) end
     if not silent and self.UIRefresh then self:UIRefresh() end
     return p
@@ -184,6 +186,109 @@ function CR:Stat(name, field, delta)
     local p = self:Person(name)
     if p then p.stats[field] = (p.stats[field] or 0) + (delta or 1) end
     return p
+end
+
+function CR:FormatDuration(seconds)
+    seconds = math.max(0, self:SafeNumber(seconds) or 0)
+    local minutes = math.floor(seconds / 60)
+    if seconds == 0 then return "0 min" end
+    if minutes == 0 then return "< 1 min" end
+    local hours = math.floor(minutes / 60)
+    if hours == 0 then return minutes .. " min" end
+    return hours .. " h " .. (minutes % 60) .. " min"
+end
+
+-- Assign stable IDs to old entries without changing their order or statistics.
+function CR:UpgradeHistoryIDs()
+    local nextID = self.db.nextEntryID or 0
+    for _, person in pairs(self.db.people) do
+        for _, item in ipairs(person.history or {}) do nextID = math.max(nextID, item.id or 0) end
+    end
+    for _, item in ipairs(self.db.activity) do nextID = math.max(nextID, item.id or 0) end
+    for _, person in pairs(self.db.people) do
+        for _, item in ipairs(person.history or {}) do
+            if not item.id then nextID = nextID + 1; item.id = nextID end
+        end
+    end
+    local used = {}
+    for _, activity in ipairs(self.db.activity) do
+        if activity.id then used[activity.id] = true end
+    end
+    for _, activity in ipairs(self.db.activity) do
+        local person = self.db.people[activity.key]
+        if not activity.id and person then
+            for _, item in ipairs(person.history or {}) do
+                if not used[item.id] and item.when == activity.when and item.kind == activity.kind and item.title == activity.title then
+                    activity.id = item.id; used[item.id] = true; break
+                end
+            end
+        end
+    end
+    self.db.nextEntryID = nextID
+end
+
+function CR:DeleteHistoryEntry(key, entry)
+    local person = self.db.people[key]
+    if not person then return false end
+    for i, item in ipairs(person.history) do
+        if item == entry then
+            table.remove(person.history, i)
+            for j = #self.db.activity, 1, -1 do
+                local activity = self.db.activity[j]
+                if activity.key == key and activity.id == entry.id then table.remove(self.db.activity, j) end
+            end
+            self:UIRefresh()
+            return true
+        end
+    end
+    return false
+end
+
+function CR:ClearHistory(key)
+    local person = self.db.people[key]
+    if not person then return end
+    person.history = {}
+    for i = #self.db.activity, 1, -1 do
+        if self.db.activity[i].key == key then table.remove(self.db.activity, i) end
+    end
+    self:UIRefresh()
+end
+
+function CR:DeletePerson(key)
+    if not self.db.people[key] then return false end
+    self:ClearHistory(key)
+    self.db.people[key] = nil
+    self.forgotten = self.forgotten or {}
+    self.forgotten[key] = true -- Do not immediately recreate from a pending event or group timer.
+    for guid, cachedKey in pairs(self.guidCache) do if cachedKey == key then self.guidCache[guid] = nil end end
+    self.lastPvPAlert[key] = nil
+    for memberKey, name in pairs(self.group) do
+        if self:Normalize(name) == key then self.group[memberKey] = nil end
+    end
+    if self.trade and self:Normalize(self.trade.name) == key then self.trade = nil end
+    if self:Normalize(self.tradePendingName) == key then self.tradePendingName = nil end
+    if self:Normalize(self.duelOpponent) == key then self.duelOpponent = nil end
+    local function pruneRun(run)
+        for memberKey, name in pairs(run.members or {}) do
+            if self:Normalize(name) == key then run.members[memberKey] = nil end
+        end
+    end
+    for _, run in ipairs(self.db.runs) do pruneRun(run) end
+    if self.run then pruneRun(self.run) end
+    self:UIRefresh()
+    return true
+end
+
+function CR:HistoryItems(person, filter, search, showEdits)
+    local out = {}
+    search = (search or ""):lower()
+    for _, item in ipairs(person.history or {}) do
+        local kindOK = (filter == "all" or item.kind == filter)
+        local visible = showEdits or filter == "note" or item.kind ~= "note"
+        local text = ((item.title or "") .. " " .. (item.detail or "") .. " " .. (item.zone or "")):lower()
+        if kindOK and visible and (search == "" or text:find(search, 1, true)) then out[#out+1] = item end
+    end
+    return out
 end
 
 function CR:Note(name, note)
@@ -203,6 +308,7 @@ function CR:Tag(name, tag, enabled)
     for _, value in ipairs(self.tags) do if value == tag then valid = true; break end end
     if not valid then self:Say("Unknown tag: " .. tostring(tag)); return end
     if enabled == nil then enabled = not p.tags[tag] end
+    if (p.tags[tag] and true or false) == (enabled and true or false) then return end
     p.tags[tag] = enabled or nil
     self:Record(name, "note", (enabled and "Marked: " or "Unmarked: ") .. tag, "Personal assessment", "manual")
 end
@@ -211,6 +317,7 @@ function CR:Rate(name, rating)
     local p = self:Person(name)
     rating = tonumber(rating)
     if not p or not rating or rating < 0 or rating > 5 then return end
+    if p.rating == math.floor(rating) then return end
     p.rating = math.floor(rating)
     self:Record(name, "note", "Rating " .. p.rating .. "/5", "Personal assessment", "manual")
 end
@@ -238,12 +345,14 @@ end
 function CR:Init()
     CrossroadsPlayerMemoryDB = type(CrossroadsPlayerMemoryDB) == "table" and CrossroadsPlayerMemoryDB or {}
     self.db = CrossroadsPlayerMemoryDB
-    self.db.schema = 2
+    self.db.schema = 3
     self.db.people = type(self.db.people) == "table" and self.db.people or {}
     self.db.runs = type(self.db.runs) == "table" and self.db.runs or {}
     self.db.activity = type(self.db.activity) == "table" and self.db.activity or {}
     self.db.options = type(self.db.options) == "table" and self.db.options or {}
     self.db.summary = type(self.db.summary) == "table" and self.db.summary or {}
+    self:UpgradeHistoryIDs()
+    self.forgotten = {}
     for k, v in pairs(self.settingsDefaults) do
         if self.db.options[k] == nil then self.db.options[k] = v end
     end
@@ -312,6 +421,10 @@ function CR:Slash(message)
     end
     if command == "add" or command == "find" then
         local name = tail == "target" and targetName() or tail
+        if command == "add" then
+            local key = self:Normalize(name)
+            if key and self.forgotten then self.forgotten[key] = nil end
+        end
         local p = (command == "find") and self:Find(name) or self:Person(name)
         if p then self:OpenUI(p.key) else self:Say("Player not found. Use /cr add First Surname") end
         return

@@ -12,7 +12,9 @@ local function allMembers()
         local token = raid and ("raid" .. i) or ("party" .. i)
         -- The local player occupies a party slot in raids but not in normal parties.
         local name = CR:PlayerName(token)
-        if name then members[name:lower()] = name; CR:FromUnit(token, false) end
+        if name and not (CR.forgotten and CR.forgotten[name:lower()]) then
+            members[name:lower()] = name; CR:FromUnit(token, false)
+        end
     end
     return members
 end
@@ -55,6 +57,7 @@ function CR:GroupTick()
             if p then p.lastGrouped = now end
         end
     end
+    self:UIRefresh()
 end
 
 local function instanceState()

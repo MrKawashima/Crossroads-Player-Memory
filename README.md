@@ -4,9 +4,9 @@
 
 **Remember the people. Relive the adventures.**
 
-A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.1-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
+A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.2-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
 
-> **Experimental Alpha — not tested in the real WoW Forever client.** Source review and offline Lua 5.1 simulations passed. These checks do not prove client compatibility, event availability, UI layout, or persistence. Treat records as incomplete observations, not authoritative evidence about other players.
+> **Experimental Alpha — this new build has not been tested in the real WoW Forever client.** Source review and offline Lua 5.1 simulations passed. These checks do not prove client compatibility, event availability, UI layout, or persistence. Treat records as incomplete observations, not authoritative evidence about other players.
 
 ## Features
 
@@ -22,7 +22,7 @@ A local player-history journal for **World of Warcraft: Forever**, by **MrKawash
 
 ## Installation
 
-1. Download **Crossroads-Player-Memory-Forever-0.2.1-alpha.zip** from Releases.
+1. Download **Crossroads-Player-Memory-Forever-0.2.2-alpha.zip** from Releases.
 2. Extract the **CrossroadsPlayerMemory** folder into your Forever client's **Interface/AddOns** directory, usually `World of Warcraft/_forever_/Interface/AddOns`.
 3. Check that `Interface/AddOns/CrossroadsPlayerMemory/CrossroadsPlayerMemory.toc` exists.
 4. Enable **Crossroads: Player Memory (alpha)** in the AddOns list.
@@ -33,6 +33,20 @@ This is independent of the unrelated CurseForge addon named **Crossroads**. Its 
 ### Earlier private prototypes
 
 The public release uses `CrossroadsPlayerMemoryDB` in `CrossroadsPlayerMemory.lua`. It does not automatically import `CrossroadsDB`, because that name may belong to the unrelated addon. Existing prototype data is left untouched. No migration has been tested; back up any prototype SavedVariables before changing installations. Do not remove an unrelated `Crossroads` installation.
+
+## Journal layout and deletion
+
+The profile header separates **Time Together**, **Group Sessions**, and **Dungeon / Raid Visits**. Time is shown as hours and minutes, rather than an undifferentiated minute count.
+
+**History** provides category filters, text search, date headings and entries you can click to expand. Profile edits are hidden by default to keep adventures visible; select **Personal** or enable **Show profile edits** to include them. **Notes & tags** has its own tab. Unsaved note drafts are kept while switching players in the current UI session; click **Save note** to persist them.
+
+- **Delete** beside an entry removes that entry after confirmation.
+- **Clear history** removes all timeline entries for the selected player, including filtered-out entries.
+- Both actions leave aggregate statistics, current notes/labels and trade snapshots unchanged: the bounded timeline cannot reconstruct lifetime totals.
+- **Delete player** removes the full profile, notes, labels, totals, trade snapshots, activity references and references in saved instance rosters. Other players and shared runs are retained.
+- These actions cannot be undone. A deleted player is not automatically recreated until the next login/reload. `/crmemory add First Surname` adds them again sooner. This is not a permanent ignore list.
+
+Upgrade from the public 0.2.1 build by replacing the **CrossroadsPlayerMemory** addon folder. Keep its SavedVariables file; existing profiles are upgraded automatically.
 
 ## Commands
 
