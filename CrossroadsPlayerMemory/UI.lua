@@ -168,7 +168,21 @@ function CR:BuildUI()
             W.filter=name; closeMenus(); W.listScroll:SetVerticalScroll(0); CR:UIRefresh()
         end)
     end
-    W.listScroll,W.listChild=scrollArea(W,12,-204,248,438)
+    W.sortLabels={recent="Last seen",name="Name",time="Time together",groups="Group sessions",rating="Rating"}
+    W.sortButton=button(W,"",18,-201,170,25,function() toggleMenu(W.sortMenu) end)
+    W.sortDirection=button(W,"",194,-201,54,25,function()
+        CR.db.options.playerSortAscending=not CR.db.options.playerSortAscending
+        closeMenus(); W.listScroll:SetVerticalScroll(0); CR:UIRefresh()
+    end)
+    W.sortMenu=menu(W,230,145,18,-229); W.sortChoices={}
+    for i,mode in ipairs({"recent","name","time","groups","rating"}) do
+        W.sortChoices[mode]=button(W.sortMenu,W.sortLabels[mode],5,-5-(i-1)*27,220,25,function()
+            CR.db.options.playerSort=mode
+            CR.db.options.playerSortAscending=mode=="name"
+            closeMenus(); W.listScroll:SetVerticalScroll(0); CR:UIRefresh()
+        end)
+    end
+    W.listScroll,W.listChild=scrollArea(W,12,-236,248,406)
     W.rows={}
 
     local detail=panel(W,615,566); detail:SetPoint("TOPRIGHT",W,"TOPRIGHT",-12,-76)
@@ -280,6 +294,10 @@ function CR:UIRefresh()
     local list=self:List(W.search:GetText(),W.filter)
     local count=math.min(#list,300)
     W.countLabel:SetText(#list .. " players" .. (#list>300 and " (showing 300)" or ""))
+    local sortMode=self.db.options.playerSort or "recent"
+    W.sortButton:SetText("Sort: "..(W.sortLabels[sortMode] or "Last seen").."  v")
+    W.sortDirection:SetText(self.db.options.playerSortAscending and "Asc" or "Desc")
+    for mode,b in pairs(W.sortChoices) do if mode==sortMode then b:LockHighlight() else b:UnlockHighlight() end end
     W.playerFilterButton:SetText((W.filter=="All" and "All players" or W.filter) .. "  v")
     local selectedVisible=false
     for _,person in ipairs(list) do if person.key==W.selected then selectedVisible=true; break end end
@@ -303,12 +321,16 @@ function CR:UIRefresh()
         row.playerKey=person.key
         local marker=person.tags.Avoid and "|cffff7766! |r" or person.tags.Rival and "|cffffb36b! |r" or person.tags.Friend and "|cff66dd88+ |r" or ""
         row.name:SetText(marker .. person.name)
-        row.meta:SetText(self:FormatDuration(person.stats.timeTogether) .. " together")
+        local meta=self:FormatDuration(person.stats.timeTogether).." together"
+        if sortMode=="groups" then meta=(person.stats.groupSessions or 0).." group sessions"
+        elseif sortMode=="rating" then meta="Rating: "..(person.rating or 0).."/5"
+        elseif sortMode=="recent" then meta="Seen: "..self:Date(person.lastSeen) end
+        row.meta:SetText(meta)
         if person.key==W.selected then row:LockHighlight() else row:UnlockHighlight() end
         row:Show()
     end
     for i=count+1,#W.rows do W.rows[i]:Hide() end
-    W.listChild:SetHeight(math.max(422,count*47))
+    W.listChild:SetHeight(math.max(390,count*47))
     local person=W.selected and self.db.people[W.selected]
     W.deletePlayer:SetEnabled(person~=nil); W.saveNote:SetEnabled(person~=nil)
     for _,b in pairs(W.stars) do b:SetEnabled(person~=nil) end

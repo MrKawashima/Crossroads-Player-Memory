@@ -1,3 +1,20 @@
+# Crossroads: Player Memory 0.2.5 Alpha
+
+## Player list sorting
+
+- Sort players by Last seen, Name, Time together, Group sessions or Rating.
+- Choose ascending or descending order using the adjacent Asc / Desc button.
+- Name defaults to A–Z; other fields default to highest/newest first when selected.
+- Sorting works with search and player filters. Equal values use alphabetical names for a stable order.
+- The secondary line shows the relevant value for last seen, group sessions or rating.
+- Your chosen field and direction are saved between sessions. Existing player data and tracking preferences are preserved.
+
+Offline Lua 5.1 regression tests pass for all five fields, both directions, ties, missing values, combined search/filters, selection retention and persisted preferences, alongside the existing tracker, trip and deletion tests.
+
+**This update has not been verified in the real WoW Forever client.** Experimental Alpha targeting Forever 1.60.1 / Interface 16001.
+
+---
+
 # Crossroads: Player Memory 0.2.4 Alpha
 
 ## Group trips in your timeline

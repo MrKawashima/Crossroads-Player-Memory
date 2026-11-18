@@ -295,3 +295,33 @@ local count=#CR:Find('Alice Oak').history; CR:QuestTurnedIn(42)
 assert(#CR:Find('Alice Oak').history==count+1)
 ''')
 print('PASS: trip aggregation, whisper privacy/counts, roster changes, per-player duration, search/categories, bounded details, active-trip deletion, reload separation and default/preserved settings.')
+
+
+lua.execute(r'''
+CR.db.people={}; CR:FinishGroupSession('test boundary')
+local a=CR:Person('Amber Oak'); local b=CR:Person('Birch Oak'); local c=CR:Person('Cedar Oak')
+a.lastSeen=10; b.lastSeen=30; c.lastSeen=20
+a.stats.timeTogether=300; b.stats.timeTogether=100; c.stats.timeTogether=200
+a.stats.groupSessions=2; b.stats.groupSessions=3; c.stats.groupSessions=1
+a.rating=3; b.rating=1; c.rating=5
+local expected={recent=b,name=c,time=a,groups=b,rating=c}
+for mode,first in pairs(expected) do
+ CR.db.options.playerSort=mode; CR.db.options.playerSortAscending=false
+ local down=CR:List('', 'All'); assert(down[1]==first)
+ CR.db.options.playerSortAscending=true
+ local up=CR:List('', 'All'); assert(up[1]==down[3] and up[3]==down[1])
+end
+CR.db.options.playerSort='rating'; CR.db.options.playerSortAscending=false
+a.rating=5; assert(CR:List('', 'All')[1]==a) -- stable alphabetical tie-break
+b.tags.Friend=true; c.tags.Friend=true
+assert(CR:List('', 'Friends')[1]==c and #CR:List('', 'Friends')==2)
+assert(CR:List('Birch', 'All')[1]==b and #CR:List('Birch', 'All')==1)
+b.stats={}; b.rating=nil; b.lastSeen=nil
+for _,mode in ipairs({'recent','time','groups','rating'}) do CR.db.options.playerSort=mode; assert(CR:List('', 'All')[3]==b) end
+CR:OpenUI(a.key); local w=CR.window
+w.sortButton.scripts.OnClick(); assert(w.sortMenu.shown)
+w.sortChoices.name.scripts.OnClick(); assert(CR.db.options.playerSort=='name' and CR.db.options.playerSortAscending and not w.sortMenu.shown)
+w.sortDirection.scripts.OnClick(); assert(not CR.db.options.playerSortAscending and w.selected==a.key)
+CR:Init(); assert(CR.db.options.playerSort=='name' and CR.db.options.playerSortAscending==false)
+''')
+print('PASS: five player sort fields, both directions, stable ties, missing values, combined search/filters, selection retention and saved sort preferences.')

@@ -1,10 +1,11 @@
 local addonName, CR = ...
 _G.CrossroadsPlayerMemoryLocal = CR
-CR.version = "0.2.4-alpha"
+CR.version = "0.2.5-alpha"
 CR.settingsDefaults = {
     groups = true, quests = true, instances = true, pvp = true,
     loot = true, trades = true, social = true, sight = false,
     alerts = true, tooltips = true, chatCounts = false, minimapIcon = true,
+    playerSort = "recent", playerSortAscending = false,
 }
 CR.tags = {"Friend", "Helpful", "Great Tank", "Great Healer", "Great DPS", "Rival", "Ninja Looter", "Avoid", "Kill on Sight"}
 CR.types = {group="Group", quest="Quest", dungeon="Dungeon", pvp="PvP", loot="Loot", trade="Trade", social="Social", note="Personal", sight="Encounter"}
@@ -393,9 +394,24 @@ function CR:List(search, filter)
             or (filter == "Avoid" and (p.tags.Avoid or p.tags["Ninja Looter"]))
         if matches and ok then table.insert(list, p) end
     end
+    local mode=self.db.options.playerSort or "recent"
+    local ascending=self.db.options.playerSortAscending==true
+    local function value(p)
+        if mode=="name" then return (p.name or ""):lower() end
+        if mode=="time" then return (p.stats or {}).timeTogether or 0 end
+        if mode=="groups" then return (p.stats or {}).groupSessions or 0 end
+        if mode=="rating" then return p.rating or 0 end
+        return p.lastSeen or 0
+    end
     table.sort(list, function(a,b)
-        if a.lastSeen == b.lastSeen then return a.name < b.name end
-        return a.lastSeen > b.lastSeen
+        local av,bv=value(a),value(b)
+        if av==bv then
+            local an,bn=(a.name or ""):lower(),(b.name or ""):lower()
+            if an==bn then return (a.key or "")<(b.key or "") end
+            return an<bn
+        end
+        if ascending then return av<bv end
+        return av>bv
     end)
     return list
 end

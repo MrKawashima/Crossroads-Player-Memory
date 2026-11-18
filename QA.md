@@ -53,3 +53,7 @@ Additional assertions cover three-tab visibility, mutually exclusive menus, rati
 Offline Lua 5.1 regressions pass, including session aggregation, whisper counts, roster changes, per-player duration, search, deletion during an active trip, reload separation and saved preference preservation. Trip details retain the latest 50 non-whisper activities, with counts retained when older details are omitted. History retains up to 100 entries per player.
 
 **This Alpha has not been verified in the real WoW Forever client.** User screenshots confirm that earlier UI builds opened in game; they do not validate every tracker or persistence. Targets Forever 1.60.1 / Interface 16001. Quest entries describe your actions, dungeon events do not prove a clear, and trade attempts do not prove completion.
+
+## 0.2.5 sorting
+
+All five sort fields and both directions, ties, missing statistics, search/filter combinations, selection retention and saved options pass offline tests. In-client dropdown layout and interaction remain unverified.
