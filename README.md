@@ -4,7 +4,7 @@
 
 **Remember the people. Relive the adventures.**
 
-A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.5-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
+A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.6-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
 
 > **Experimental Alpha — this new build has not been tested in the real WoW Forever client.** Source review and offline Lua 5.1 simulations passed. These checks do not prove client compatibility, event availability, UI layout, or persistence. Treat records as incomplete observations, not authoritative evidence about other players.
 
@@ -22,7 +22,7 @@ A local player-history journal for **World of Warcraft: Forever**, by **MrKawash
 
 ## Installation
 
-1. Download **Crossroads-Player-Memory-Forever-0.2.5-alpha.zip** from Releases.
+1. Download **Crossroads-Player-Memory-Forever-0.2.6-alpha.zip** from Releases.
 2. Extract the **CrossroadsPlayerMemory** folder into your Forever client's **Interface/AddOns** directory, usually `World of Warcraft/_forever_/Interface/AddOns`.
 3. Check that `Interface/AddOns/CrossroadsPlayerMemory/CrossroadsPlayerMemory.toc` exists.
 4. Enable **Crossroads: Player Memory (alpha)** in the AddOns list.

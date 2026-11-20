@@ -57,3 +57,7 @@ Offline Lua 5.1 regressions pass, including session aggregation, whisper counts,
 ## 0.2.5 sorting
 
 All five sort fields and both directions, ties, missing statistics, search/filter combinations, selection retention and saved options pass offline tests. In-client dropdown layout and interaction remain unverified.
+
+## 0.2.6 notes editor
+
+Offline tests cover explicit mouse/keyboard input, clicking editor and blank space, typing, refresh retention, saving, profile-switch drafts, multiline text, cursor scrolling, Escape and hiding. Real-client validation of the reported inability to type is still required.

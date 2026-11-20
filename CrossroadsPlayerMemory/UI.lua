@@ -91,6 +91,7 @@ function CR:SelectPerson(key)
     closeMenus()
     if W.eventDialog then W.eventDialog:Hide() end
     if W.selected ~= key then
+        W.notes:ClearFocus()
         W.selected=key; W.notesFor=nil
         W.historyScroll:SetVerticalScroll(0)
     end
@@ -271,13 +272,32 @@ function CR:BuildUI()
     local noteScroll,noteChild=scrollArea(W.notesPane,0,-130,583,160)
     W.notes=CreateFrame("EditBox",nil,noteChild)
     W.notes:SetPoint("TOPLEFT",noteChild,"TOPLEFT",4,-4); W.notes:SetWidth(531)
-    W.notes:SetHeight(85)
+    W.notes:SetHeight(132)
+    W.notes:EnableMouse(true)
+    W.notes:EnableKeyboard(true)
+    W.noteScroll=noteScroll
+    local function focusNotes(_,mouseButton)
+        if mouseButton=="LeftButton" and W.selected then closeMenus(); W.notes:SetFocus() end
+    end
+    W.notes:SetScript("OnMouseDown",focusNotes)
+    noteScroll:EnableMouse(true); noteScroll:SetScript("OnMouseDown",focusNotes)
+    noteChild:EnableMouse(true); noteChild:SetScript("OnMouseDown",focusNotes)
+    W.notes:SetScript("OnHide",function(self) self:ClearFocus() end)
     W.notes:SetMultiLine(true); W.notes:SetMaxLetters(2000); W.notes:SetAutoFocus(false)
     W.notes:SetFontObject("ChatFontNormal"); W.notes:SetTextInsets(0,0,0,0)
     W.notes:SetScript("OnEscapePressed",function(self) self:ClearFocus() end)
+    W.notes:SetScript("OnSizeChanged",function(self,_,height)
+        noteChild:SetHeight(math.max(140,height+8))
+    end)
+    W.notes:SetScript("OnCursorChanged",function(_,_,y,_,height)
+        local top=-y; local current=noteScroll:GetVerticalScroll()
+        local viewport=noteScroll:GetHeight()
+        if top<current then noteScroll:SetVerticalScroll(math.max(0,top))
+        elseif top+height>current+viewport then noteScroll:SetVerticalScroll(math.max(0,top+height-viewport)) end
+    end)
     W.notes:SetScript("OnTextChanged",function(self,byUser)
         if byUser and W.notesFor then W.drafts[W.notesFor]=self:GetText(); W.noteStatus:SetText("Unsaved changes") end
-        noteChild:SetHeight(math.max(85,self:GetHeight()+8))
+        noteChild:SetHeight(math.max(140,self:GetHeight()+8))
     end)
     W.noteStatus=label(W.notesPane,"GameFontDisableSmall","",0,-309,420,18)
     W.saveNote=button(W.notesPane,"Save note",458,-301,125,26,function()
@@ -365,6 +385,7 @@ function CR:UIRefresh()
     for i,b in pairs(W.stars) do if person.rating==i then b:LockHighlight() else b:UnlockHighlight() end end
     for tag,b in pairs(W.tagButtons) do if person.tags[tag] then b:LockHighlight() else b:UnlockHighlight() end end
     if W.notesFor~=person.key then
+        W.notes:ClearFocus(); W.noteScroll:SetVerticalScroll(0)
         W.notesFor=person.key; W.notes:SetText(W.drafts[person.key] or person.notes or "")
         W.noteStatus:SetText(W.drafts[person.key] and "Unsaved changes" or "")
     end

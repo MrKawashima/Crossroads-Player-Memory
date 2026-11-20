@@ -1,3 +1,19 @@
+# Crossroads: Player Memory 0.2.6 Alpha
+
+## Notes editor input fix
+
+- Explicitly enable mouse and keyboard input for the private notes editor.
+- Clicking the editor or blank space in its scroll area focuses the text field.
+- Keep a usable empty editing area and scroll to follow the cursor in longer notes.
+- Release keyboard focus when switching profiles, hiding the editor, pressing Escape or saving.
+- Existing notes, drafts and other player data are preserved.
+
+Offline Lua 5.1 tests pass for input configuration, click-to-focus, simulated typing, save, draft retention, multiline text, cursor scrolling and focus release, alongside all existing regressions.
+
+**The reported client issue has not yet been reproduced or verified fixed in the real WoW Forever client.** This addresses the missing mouse/input setup found during source review. Experimental Alpha targeting Forever 1.60.1 / Interface 16001.
+
+---
+
 # Crossroads: Player Memory 0.2.5 Alpha
 
 ## Player list sorting

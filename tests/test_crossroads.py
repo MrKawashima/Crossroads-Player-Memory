@@ -19,6 +19,10 @@ function CreateFrame(kind, name, parent)
   if k=='RegisterEvent' then return function(self,ev) if ev=='PARTY_KILL' then error('unsupported mock event') end end end
   if k=='CreateTexture' or k=='CreateFontString' then return function(self,_,layer,font) local child=CreateFrame(k=='CreateTexture' and 'Texture' or 'FontString',nil,self); child.font=font; return child end end
   if k=='GetHighlightTexture' then return function() return {SetVertexColor=function() end} end end
+  if k=='EnableMouse' then return function(self,v) self.mouseEnabled=v end end
+  if k=='EnableKeyboard' then return function(self,v) self.keyboardEnabled=v end end
+  if k=='SetFocus' then return function(self) self.focused=true end end
+  if k=='ClearFocus' then return function(self) self.focused=false end end
   if k=='SetText' then return function(self,s) self.text=s end end
   if k=='GetText' then return function(self) return self.text end end
   if k=='SetSize' then return function(self,w,h) self.width=w; self.height=h end end
@@ -325,3 +329,27 @@ w.sortDirection.scripts.OnClick(); assert(not CR.db.options.playerSortAscending 
 CR:Init(); assert(CR.db.options.playerSort=='name' and CR.db.options.playerSortAscending==false)
 ''')
 print('PASS: five player sort fields, both directions, stable ties, missing values, combined search/filters, selection retention and saved sort preferences.')
+
+
+lua.execute(r'''
+CR:OpenUI('amber oak'); local w=CR.window; w.tabs.notes.scripts.OnClick()
+assert(w.notes.mouseEnabled and w.notes.keyboardEnabled and w.notes.height>=132)
+local function typeNote(text)
+ assert(w.notes.focused and w.notes.keyboardEnabled)
+ w.notes:SetText(text); w.notes.scripts.OnTextChanged(w.notes,true)
+end
+w.notes.scripts.OnMouseDown(w.notes,'LeftButton'); typeNote('A note typed by clicking the editor')
+CR:UIRefresh(); assert(w.notes:GetText()=='A note typed by clicking the editor')
+w.saveNote.scripts.OnClick(); assert(CR.db.people['amber oak'].notes=='A note typed by clicking the editor' and not w.notes.focused)
+w.noteScroll.scripts.OnMouseDown(w.noteScroll,'LeftButton'); typeNote('Draft from the blank area')
+CR:SelectPerson('cedar oak'); assert(not w.notes.focused)
+CR:SelectPerson('amber oak'); assert(w.notes:GetText()=='Draft from the blank area')
+w.notes.scripts.OnMouseDown(w.notes,'LeftButton'); typeNote('First line\nSecond line')
+w.saveNote.scripts.OnClick(); assert(CR.db.people['amber oak'].notes=='First line\nSecond line')
+w.notes.scripts.OnMouseDown(w.notes,'LeftButton'); w.notes.scripts.OnEscapePressed(w.notes); assert(not w.notes.focused)
+w.notes.scripts.OnSizeChanged(w.notes,531,600); assert(w.notes.parent.height==608)
+w.notes.scripts.OnCursorChanged(w.notes,0,-400,1,16); assert(w.noteScroll:GetVerticalScroll()>0)
+w.notes.scripts.OnCursorChanged(w.notes,0,0,1,16); assert(w.noteScroll:GetVerticalScroll()==0)
+w.notes.scripts.OnMouseDown(w.notes,'LeftButton'); w.notes.scripts.OnHide(w.notes); assert(not w.notes.focused)
+''')
+print('PASS: note editor input enabled, click-to-focus including blank area, typing, refresh retention, save, draft switching, multiline text, Escape, hide and cursor scrolling.')
