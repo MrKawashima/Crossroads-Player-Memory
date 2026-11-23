@@ -1,4 +1,8 @@
-# Alpha quality assurance
+# Quality assurance
+
+## Current status: 0.2.6 Beta (23 November 2026)
+
+Promoted from 0.2.6 Alpha following the project owner’s positive gameplay feedback and explicit request for Beta. Offline regressions pass. Runtime functionality is unchanged. Older version sections below describe evidence available at the time of those releases. Full tracker and persistence coverage remains unverified.
 
 ## Evidence and scope — 17 November 2026
 
@@ -6,7 +10,7 @@ The four supplied Lua modules in the addon archive match their copies in the pub
 
 `tests/test_crossroads.py` loads all four modules with Lua 5.1 and exercises mocked WoW API boundaries. Passing scenarios: login despite an unavailable event; isolated global/storage names; secret scalar/table rejection; finite-number checks; two-part player names; self exclusion; group time; quest events; instance entry, boss and exit; correct `lootListID`; persistent loot deduplication; trade acceptance withdrawal and avoidance of target-based attribution; notes/ratings/tags; whisper counts; duplicate death events; zero-overkill ambiguity; readable final-hit attribution; GUID-matched kills; history bounds; main/options UI construction; minimap click, drag, hide and reset.
 
-These mocks cannot reproduce WoW taint, protected actions, actual secret-value semantics, native event delivery, texture rendering or SavedVariables persistence. No real-client pass is claimed. Source fields and API availability must still be verified in Forever.
+These mocks cannot reproduce WoW taint, protected actions, actual secret-value semantics, native event delivery, texture rendering or SavedVariables persistence. The project owner has since reported successful real-client use; this is not an exhaustive client test pass. Source fields and API availability must still be verified in Forever.
 
 ## API references checked
 

@@ -4,9 +4,9 @@
 
 **Remember the people. Relive the adventures.**
 
-A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.6-alpha**, targeting **Interface 16001 / Forever 1.60.1**.
+A local player-history journal for **World of Warcraft: Forever**, by **MrKawashima**. Version **0.2.6-beta**, targeting **Interface 16001 / Forever 1.60.1**.
 
-> **Experimental Alpha — this new build has not been tested in the real WoW Forever client.** Source review and offline Lua 5.1 simulations passed. These checks do not prove client compatibility, event availability, UI layout, or persistence. Treat records as incomplete observations, not authoritative evidence about other players.
+> **Beta — positive real-client feedback.** The project owner reports that the addon works well in WoW Forever. Offline Lua 5.1 regressions pass. This does not constitute exhaustive verification of every tracker, client configuration or persistence edge case. Treat records as incomplete observations, not authoritative evidence about other players.
 
 ## Features
 
@@ -22,10 +22,10 @@ A local player-history journal for **World of Warcraft: Forever**, by **MrKawash
 
 ## Installation
 
-1. Download **Crossroads-Player-Memory-Forever-0.2.6-alpha.zip** from Releases.
+1. Download **Crossroads-Player-Memory-Forever-0.2.6-beta.zip** from Releases.
 2. Extract the **CrossroadsPlayerMemory** folder into your Forever client's **Interface/AddOns** directory, usually `World of Warcraft/_forever_/Interface/AddOns`.
 3. Check that `Interface/AddOns/CrossroadsPlayerMemory/CrossroadsPlayerMemory.toc` exists.
-4. Enable **Crossroads: Player Memory (alpha)** in the AddOns list.
+4. Enable **Crossroads: Player Memory (beta)** in the AddOns list.
 5. Click the book icon on the minimap or enter **/crmemory**.
 
 This is independent of the unrelated CurseForge addon named **Crossroads**. Its files, repository and project are not used or modified. This release uses a distinct installation folder, SavedVariables name and global UI names. `/cr` and `/crossroads` are convenience aliases only when an addon named `Crossroads` is not installed; `/crmemory` always identifies this addon.
@@ -80,16 +80,16 @@ Use `target` instead of a name for notes, ratings, tags and manual PvP reports.
 
 The addon stores its records locally in WoW SavedVariables. It contains no outbound addon messaging, telemetry or external upload. Whisper and party-chat bodies are not retained. Labels are personal assessments, not verified accusations. Need rolls never automatically assign a negative label. The addon does not attack, target, whisper, trade, report or retaliate automatically.
 
-Quest records describe **your** actions while grouped; they do not prove a teammate completed the quest. A dungeon visit is not a verified clear. Both players accepting a trade does not prove a completed transfer. A PvP `confirmed` label describes the readable event evidence used by the algorithm, not independent validation of this Alpha's behavior.
+Quest records describe **your** actions while grouped; they do not prove a teammate completed the quest. A dungeon visit is not a verified clear. Both players accepting a trade does not prove a completed transfer. A PvP `confirmed` label describes the readable event evidence used by the algorithm, not independent validation of this Beta's behavior.
 
 ## Known limitations
 
-- This new interface has not been tested in the real client. API payloads, restricted/secret data, and missing events may cause incomplete records. Unavailable event registrations are reported in chat rather than aborting startup.
+- API payloads, restricted/secret data, and missing events may cause incomplete records. Unavailable event registrations are reported in chat rather than aborting startup.
 - Death recap fields and kill credit remain experimental. Pets, hidden identities and unavailable recap data can prevent attribution. Duplicate death events are suppressed until revival.
 - Names are account-wide keys. Ambiguous first names are not merged; identical full names across rulesets and renamed characters are not fully reconciled.
 - Group time is approximate. A reload or logout interrupts an instance visit.
 - Storage retains 100 timeline entries per player, 1,500 activity references, 150 visits and 30 trade snapshots per player. The total profile count is not capped.
-- The UI shows at most 300 matching profiles. Search to narrow the list. Visual layout is not yet verified in game.
+- The UI shows at most 300 matching profiles. Search to narrow the list. Other screen sizes and UI configurations still need broader testing.
 - Persistence depends on the client correctly loading/writing SavedVariables. Earlier Forever beta builds had reported persistence failures; current behavior is unverified here. Crashes can lose recent data.
 
 ## Validation and feedback
@@ -100,4 +100,4 @@ Offline tests require Python and `lupa` (Lua 5.1): `python tests/test_crossroads
 
 ## License
 
-Copyright 2026 MrKawashima. All rights reserved. No open-source redistribution license is granted by this Alpha release. WoW textures referenced by the addon are supplied by the game and are not included in this package.
+Copyright 2026 MrKawashima. All rights reserved. No open-source redistribution license is granted by this Beta release. WoW textures referenced by the addon are supplied by the game and are not included in this package.

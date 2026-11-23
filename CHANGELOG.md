@@ -1,3 +1,19 @@
+# Crossroads: Player Memory 0.2.6 Beta
+
+Crossroads moves to Beta following positive feedback from real WoW Forever gameplay. This promotes the functionality of 0.2.6 Alpha without changing tracking, UI behavior or saved data.
+
+Includes group-trip summaries, per-player time together, searchable history, player sorting, private notes, ratings and tags, and the notes-editor focus fix.
+
+Existing profiles, notes, history and settings are preserved. Replace the CrossroadsPlayerMemory addon folder to update; retain its SavedVariables.
+
+## Validation
+
+The project owner reports that the addon works well in the real game client. Offline Lua 5.1 regression tests also pass. This is practical user feedback, not exhaustive verification of every tracker, client configuration or persistence edge case. Please continue reporting reproducible issues with the client build and any Lua error.
+
+Beta for WoW Forever 1.60.1 / Interface 16001. Quest entries describe your actions, trade attempts do not prove completed transfers, and PvP attribution remains experimental. No new permissions, telemetry or data migration are introduced.
+
+---
+
 # Crossroads: Player Memory 0.2.6 Alpha
 
 ## Notes editor input fix

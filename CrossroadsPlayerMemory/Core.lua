@@ -1,6 +1,6 @@
 local addonName, CR = ...
 _G.CrossroadsPlayerMemoryLocal = CR
-CR.version = "0.2.6-alpha"
+CR.version = "0.2.6-beta"
 CR.settingsDefaults = {
     groups = true, quests = true, instances = true, pvp = true,
     loot = true, trades = true, social = true, sight = false,
