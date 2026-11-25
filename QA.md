@@ -1,6 +1,10 @@
 # Quality assurance
 
-## Current status: 0.2.6 Beta (23 November 2026)
+## Current status: 0.2.6 stable (25 November 2026)
+
+Promoted from 0.2.6 Beta at the project owner’s request following positive in-game feedback. Runtime functionality is unchanged; version labels and documentation are updated. Offline Lua 5.1 regressions pass. Full tracker and persistence coverage remains unverified.
+
+## Previous status: 0.2.6 Beta (23 November 2026)
 
 Promoted from 0.2.6 Alpha following the project owner’s positive gameplay feedback and explicit request for Beta. Offline regressions pass. Runtime functionality is unchanged. Older version sections below describe evidence available at the time of those releases. Full tracker and persistence coverage remains unverified.
 

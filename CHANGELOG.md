@@ -1,3 +1,28 @@
+# Crossroads: Player Memory 0.2.6
+
+First stable release for World of Warcraft: Forever 1.60.1 / Interface 16001, following positive feedback from real gameplay with 0.2.6 Beta.
+
+This release preserves the Beta's runtime functionality. Only version labels and documentation have changed.
+
+## Features
+
+- Group-trip summaries with participants, approximate time together, places and activity counts.
+- Searchable player history and sorting by last seen, name, time together, group sessions or rating.
+- Private notes, ratings and tags, with the note-editor focus fix included.
+- Quest, dungeon, loot, trade-attempt and social interaction records; whispers are counted without storing message text.
+
+## Updating
+
+Replace the CrossroadsPlayerMemory folder in Interface/AddOns. Keep its SavedVariables file to preserve profiles, notes, history and settings. No data migration or new permissions are introduced.
+
+## Validation and limitations
+
+The project owner reports successful use in the real WoW Forever client. Offline Lua 5.1 regression tests also pass. This is not exhaustive verification of every tracker, client configuration or persistence edge case.
+
+PvP attribution remains experimental. Quest entries describe your own actions, dungeon visits do not prove full clears, and trade attempts do not prove completed transfers. Records are local observations, not authoritative evidence about other players.
+
+---
+
 # Crossroads: Player Memory 0.2.6 Beta
 
 Crossroads moves to Beta following positive feedback from real WoW Forever gameplay. This promotes the functionality of 0.2.6 Alpha without changing tracking, UI behavior or saved data.

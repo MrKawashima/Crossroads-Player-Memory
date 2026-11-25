@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: Crossroads: Player Memory |cffcba96a(beta)|r
+## Title: Crossroads: Player Memory
 ## Notes: A personal memory of every adventurer you meet in WoW Forever.
 ## Author: MrKawashima
-## Version: 0.2.6-beta
+## Version: 0.2.6
 ## SavedVariables: CrossroadsPlayerMemoryDB
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 
